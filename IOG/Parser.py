@@ -54,6 +54,7 @@ class Parser:
         self.p_illumThresh = 3
         self.p_intervalStart = 4
         self.p_intervalEnd = 5
+
    
     def parse_data(self, file):
         dataFile = os.path.join(self.path, file)
@@ -82,7 +83,7 @@ class Parser:
                 targetCoordinates.append(self.get_mission_coordinates(fileLines,i))
         
             name = self.get_simple_param(fileLines, self.p_name)
-            sensorType = get_simple_param(fileLines, self.p_sensorType).lower()
+            sensorType = self.get_simple_param(fileLines, self.p_sensorType).lower()
             illumDir = self.get_simple_param(fileLines, self.p_illumDir).lower()
             illumThresh = float(self.get_simple_param(fileLines, self.p_illumThresh))
             intervalStart = self.get_simple_param(fileLines, self.p_intervalStart)

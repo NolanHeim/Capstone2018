@@ -16,10 +16,7 @@ import requests
 import flask
 
 class MissionCreator:
-    parser
-    calculator
-    constellation
-    #TODO insert class functions and parameters
+
 
     #initialization function for the mission creator class    
     def __init__(self, datapath, missionpath):
