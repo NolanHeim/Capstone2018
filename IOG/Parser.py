@@ -22,8 +22,7 @@ import os
 ###
 # Example Call:
 #X = Parser('../../Data')
-#X.parseData('RCM1_Reference_Orbit.e')
-#Y = X.getDataMatrix()
+#X.parse_data('RCM1_Reference_Orbit.e')
 ###
 
 class Parser:
@@ -31,7 +30,7 @@ class Parser:
     def __init__(self, path):
         self.path = path;
     
-    def parseData(self, file):
+    def parse_data(self, file):
         dataFile = os.path.join(self.path, file)
         fileObj = open(dataFile, 'r')
         fileLines = [line.rstrip('\n') for line in fileObj]
@@ -40,10 +39,9 @@ class Parser:
         
         dataStartIndex = fileLines.index('EphemerisTimePosVel') + 1
         dataStopIndex = fileLines.index('END Ephemeris') - 1
-        self.dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
+        dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
         
-    def getDataMatrix(self):
-        return self.dataMatrix
+        return dataMatrix
 
 
 
