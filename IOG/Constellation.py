@@ -13,18 +13,17 @@ from Satellite import *
 class Constellation:    
     
     #TODO insert class functions and parameters
-    def __init__(self, datapath):
-        self.path = datapath
+    def __init__(self):
         self.constellation = [];
         self.satellites = [];
         #initialize constellations
         
         
     #gets the info for one satellite
-    def addToConstellation(self, satellite):
+    def add_to_constellation(self, satellite):
         self.constellation.append(satellite)
 
-    def newSatellite(self, name, dataFile):
+    def new_satellite(self, name, dataFile):
         self.satellites.append(Satellite(name, self.path, dataFile))
         
         
