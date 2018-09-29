@@ -55,5 +55,5 @@ class MissionCreator:
 #we will eventually define a main function so that the program can run as an executable
 
 #The two parameters are the filepaths for the satellite data and the mission info data, respectively
-missionCreator = MissionCreator("this very folder", "this folder's parent")
+missionCreator = MissionCreator("../../Data", "../../Missions/")
 
