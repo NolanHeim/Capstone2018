@@ -108,7 +108,7 @@ class Calculator:
              #cubic hermite interpolating polynomial
          
         #When using the output of this, need numpy.asscalar(ANS) to retreive value
-        cubicHermitePoly = lambda t: numpy.piecewise(t, conditionSlices, polySlices)
+        cubicHermitePoly = lambda t: numpy.asscalar(numpy.piecewise(t, conditionSlices, polySlices))
         
         return cubicHermitePoly
         
