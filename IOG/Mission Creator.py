@@ -16,39 +16,44 @@ import requests
 import flask
 
 class MissionCreator:
-    calculator;
-    constellation;
-    #TODO insert class functions and parameters
+
 
     #initialization function for the mission creator class    
     def __init__(self, datapath, missionpath):
-        print(datapath)
-        print(missionpath)
+        print(datapath) #for testing, remove after
+        print(missionpath) #for testing, remove after
         
-        systemSetup(datapath)        
+        #initialize dependent objects
+        system_setup(datapath, missionpath) 
         
-        while(missionsExist(missionpath)):
-            currentMission = loadCurrentMission()
-            generateImagingOpportunities(currentMission)
-        #initialize variables
-        
-    def systemSetup(datapath):
-        self.calculator = Calculator(datapath);
-        self.constellation = Constellation(datapath);
-        
-    def loadCurrentMission():
-        
-        
-    def missionsExist(datapath):
+        #parser already contains missionpath
+        missions = parser.make_missions()
+        for mission in missions:        
+            generate_imaging_opportunities(mission) #main functions
         
     
-    def generateImagingOpportunities(mission):
-        calculator.generateImagineOpportunities(mission, constellation)
+    #initializes blocks of one hierarchy level lower that this one   
+    def system_setup(datapath, misionpath):
+        self.parser = Parser(datapath, missionpath);
+        self.constellation = Constellation(self.parser);
+        self.calculator = Calculator(self.constellation);
+        
+    #passes params into calculator for one mission
+    def load_current_mission():
+        
+        
+    #sees if there are still missions for which outputs have not been calculated
+    def missions_exist(datapath):
+        return 1
+        
+    
+    def generate_imaging_opportunities(mission):
+        calculator.generate_imaging_opportunities(mission)
         
 
 #main code goes here
 #we will eventually define a main function so that the program can run as an executable
 
 #The two parameters are the filepaths for the satellite data and the mission info data, respectively
-missionCreator = MissionCreator("this very folder", "this folder's parent")
+missionCreator = MissionCreator("../../Data", "../../Missions/")
 

@@ -18,6 +18,11 @@
 # Written by Jordan Jones and Nolan Heim
 #
 import os
+from Mission import Mission
+
+###IMPORTANT - CHANGE THIS WHEN WE MOVE ON FROM PHASE 1###
+phase1 = True
+###
 
 ###
 # Example Call:
@@ -27,9 +32,29 @@ import os
 
 class Parser:
     
-    def __init__(self, path):
-        self.path = path;
+    def __init__(self, datapath, missionpath):
+        self.datapath = datapath
+        self.missionpath = missionpath
     
+        #how many coordinates there are
+        if(phase1):
+            self.coordinateIndexCap = 1
+        else:
+            self.coordinateIndexCap = 4        
+        
+        self.lineLeaders = ['Name:', 'Sensor_Type:', 'Illumination_Direction:',
+                            'Illumination_Threshold:', 'Interval_Start_Time:',
+                            'Interval_End_Time:']
+        self.p_name = 0
+        self.p_sensorType = 1
+        self.p_illumDir = 2
+        self.p_illumThresh = 3
+        self.p_intervalStart = 4
+        self.p_intervalEnd = 5
+        
+        self.INDEX_OF_COORDINATES = 3
+
+   
     def parse_data(self, file):
         dataFile = os.path.join(self.path, file)
         fileObj = open(dataFile, 'r')
@@ -44,4 +69,86 @@ class Parser:
         return dataMatrix
 
 
+    def create_missions(self):
+        missions = []        
+        
+        for filename in os.listdir(self.missionpath):
+            fileObj = open(self.missionpath + filename, 'r')
+            fileLines = [line.rstrip('\n') for line in fileObj]
+            fileObj.close()
+            
+            targetCoordinates = []
+            for i in range(1,self.coordinateIndexCap+1):
+                targetCoordinates.append(self.get_mission_coordinates(fileLines,i))
+        
+            name = self.get_simple_param(fileLines, self.p_name)
+            sensorType = self.get_simple_param(fileLines, self.p_sensorType).lower()
+            illumDir = self.get_simple_param(fileLines, self.p_illumDir).lower()
+            illumThresh = float(self.get_simple_param(fileLines, self.p_illumThresh))
+            intervalStart = self.get_simple_param(fileLines, self.p_intervalStart)
+            intervalEnd = self.get_simple_param(fileLines, self.p_intervalEnd)            
+            
+            #Test code
+            print(name)
+            print(sensorType)
+            print(illumDir)
+            print(str(illumThresh))
+            print(intervalStart)   
+            print(intervalEnd)
+            print(targetCoordinates)
+            
+            newMission = Mission(targetCoordinates, name, sensorType, illumDir, illumThresh, intervalStart, intervalEnd)
+            
+            missions.append(newMission)
+            
+        return missions
+        
+        
+    def get_mission_coordinates(self, fileLines, index):
+        #first, get the coordinates in string format
+        
+        for i in range(0, len(fileLines)):
+            if(len(fileLines[i]) != 0 and fileLines[i].split()[0] == 'Coordinate' and fileLines[i].split()[2] == str(index)+':'):
+                coordinateStringLine = fileLines[i].split()
+        
+        coordinateString = coordinateStringLine[self.INDEX_OF_COORDINATES]
+        
+        #next, convert the coordinate into actual numbers
+        coordinateStringCommaIndex = coordinateString.index(',')        
+        
+        coordinateStringNS = coordinateString[2:coordinateStringCommaIndex] 
+        coordinateStringEW = coordinateString[coordinateStringCommaIndex+2:-1]
+        
+        coordinateNS = float(coordinateStringNS)
+        coordinateEW = float(coordinateStringEW)
+                
+        if coordinateString[1] == '-':
+            coordinateNS = -coordinateNS
+            
+        if coordinateString[coordinateStringCommaIndex + 1] == '-':
+            coordinateEW = -coordinateEW
+        
+        coordinates = []
+        coordinates.append(coordinateNS)
+        coordinates.append(coordinateEW)
+        
+        return coordinates
+
+
+    def get_simple_param(self, fileLines, param):
+        line = ''
+
+        for i in range(0, len(fileLines)):
+            if(len(fileLines[i]) != 0 and fileLines[i].split()[0] == self.lineLeaders[param]):
+                line = fileLines[i].split()        
+        
+        if(len(line) != 0):
+            return line[1]
+        else:
+            return 'ERROR'
+
+
+#Test code
+parser = Parser('../../Data/', '../../Missions/')
+parser.create_missions()
 
