@@ -69,10 +69,11 @@ class Parser:
         dataFile = os.path.join(self.datapath, filename)
         fileObj = open(dataFile, 'r')
         fileLines = [line.rstrip('\n') for line in fileObj]
-        self.lines = fileLines
+        fileLines[:] = [x for x in fileLines if x != '']
         fileObj.close()
         
         dataStartIndex = fileLines.index('EphemerisTimePosVel') + 1
+        print(len(fileLines[dataStartIndex]))
         dataStopIndex = fileLines.index('END Ephemeris') - 1
         dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
         

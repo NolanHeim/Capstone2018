@@ -30,8 +30,8 @@ class MissionCreator:
         missions = self.parser.create_missions()
         dataMatrices = self.parser.make_data_matrices()       
         
-        #for mission in missions:        
-            #self.generate_imaging_opportunities(mission, dataMatrices) #main functions
+        for mission in missions:        
+            self.generate_imaging_opportunities(mission, dataMatrices) #main functions
         print(str(len(missions)))
         print(missions[0].get_name())
         print(missions[0].get_coordinates())
@@ -40,12 +40,12 @@ class MissionCreator:
     #initializes blocks of one hierarchy level lower that this one   
     def system_setup(self, datapath, misionpath):
         self.parser = Parser(self.datapath, self.missionpath)
-        #self.constellation = Constellation(self.parser)
-        #self.calculator = Calculator(self.constellation)
+        self.constellation = Constellation()
+        self.calculator = Calculator()
     
     
     def generate_imaging_opportunities(self, mission, dataMatrices):
-       # self.calculator.generate_imaging_opportunities(mission, dataMatrices)
+        self.calculator.generate_imaging_opportunities(mission, dataMatrices)
         print('hi')
 
 #main code goes here
