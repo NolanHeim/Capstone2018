@@ -38,7 +38,7 @@ class Calculator:
         hMax = ((16*self.hermiteError)/(maxDenominator))**(1/4)      
         return hMax
         
-    def binaryListSearch(self,dataList, target):
+    def binary_List_Search(self,dataList, target):
         index = bisect_left(dataList, target)
         if index == 0:
             return 0
@@ -63,7 +63,7 @@ class Calculator:
         tiMinus = times[indexMinus]
         hiMinus = 100 #Might have to tweak this parameter
         hi = hiMinus
-        index = self.binaryListSearch(times, hiMinus)
+        index = self.binary_List_Search(times, hiMinus)
         ti = times[index]
         
         endOfTime = False
@@ -95,7 +95,7 @@ class Calculator:
             tiMinus = ti
             index = indexMinus
             #Might need to add a 'round down' condition to this for accuracy
-            index = self.binaryListSearch(times, tiMinus+hi)
+            index = self.binary_List_Search(times, tiMinus+hi)
             ti = times[index]
             if(ti >= times[-1]):
                 ti = times[-1]
