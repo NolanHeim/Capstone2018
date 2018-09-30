@@ -15,7 +15,7 @@ class Transformer:
         self.r_Earth = 6378137.0 #m
    
     
-    def geo_2_eci(self, lat, lon, alt, theta, JDtime): #theta in radians
+    def geo_2_eci(self, lat, lon, alt, JDtime): #theta in radians
         D = JDtime - 2451545.0
         GMST = 18.697374558 + 24.06570982441908*D
         theta = GMST*(2*math.pi/24.0) 
