@@ -18,7 +18,7 @@
 # Written by Jordan Jones and Nolan Heim
 #
 import os
-from Mission import Mission
+from Mission import *
 
 ###IMPORTANT - CHANGE THIS WHEN WE MOVE ON FROM PHASE 1###
 phase1 = True
@@ -55,8 +55,18 @@ class Parser:
         self.INDEX_OF_COORDINATES = 3
 
    
-    def parse_data(self, file):
-        dataFile = os.path.join(self.path, file)
+    def make_data_matrices(self):
+        data_matrices = []        
+        
+        for filename in os.listdir(self.datapath):
+            matrix = self.parse_data(filename)
+            data_matrices.append(matrix)
+            
+        return data_matrices   
+        
+   
+    def parse_data(self, filename):
+        dataFile = os.path.join(self.datapath, filename)
         fileObj = open(dataFile, 'r')
         fileLines = [line.rstrip('\n') for line in fileObj]
         self.lines = fileLines
@@ -87,15 +97,6 @@ class Parser:
             illumThresh = float(self.get_simple_param(fileLines, self.p_illumThresh))
             intervalStart = self.get_simple_param(fileLines, self.p_intervalStart)
             intervalEnd = self.get_simple_param(fileLines, self.p_intervalEnd)            
-            
-            #Test code
-            print(name)
-            print(sensorType)
-            print(illumDir)
-            print(str(illumThresh))
-            print(intervalStart)   
-            print(intervalEnd)
-            print(targetCoordinates)
             
             newMission = Mission(targetCoordinates, name, sensorType, illumDir, illumThresh, intervalStart, intervalEnd)
             
@@ -143,7 +144,10 @@ class Parser:
                 line = fileLines[i].split()        
         
         if(len(line) != 0):
-            return line[1]
+            if(param == self.p_intervalStart or param == self.p_intervalEnd):
+                return line[1]+' '+line[2]
+            else:
+                return line[1]
         else:
             return 'ERROR'
 

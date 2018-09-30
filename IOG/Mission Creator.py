@@ -10,46 +10,43 @@
 # Written by Jordan Jones and Nolan Heim
 #
 
-import numpy
-import matplotlib
-import requests
-import flask
+from Parser import *
+from Constellation import *
+from Calculator import *
+
 
 class MissionCreator:
 
 
     #initialization function for the mission creator class    
     def __init__(self, datapath, missionpath):
-        print(datapath) #for testing, remove after
-        print(missionpath) #for testing, remove after
-        
+
+        self.datapath = datapath
+        self.missionpath = missionpath
         #initialize dependent objects
-        system_setup(datapath, missionpath) 
+        self.system_setup(datapath, missionpath) 
         
         #parser already contains missionpath
-        missions = parser.make_missions()
-        for mission in missions:        
-            generate_imaging_opportunities(mission) #main functions
+        missions = self.parser.create_missions()
+        dataMatrices = self.parser.make_data_matrices()       
         
+        #for mission in missions:        
+            #self.generate_imaging_opportunities(mission, dataMatrices) #main functions
+        print(str(len(missions)))
+        print(missions[0].get_name())
+        print(missions[0].get_coordinates())
+        print(missions[0].get_interval_start_time())
     
     #initializes blocks of one hierarchy level lower that this one   
-    def system_setup(datapath, misionpath):
-        self.parser = Parser(datapath, missionpath);
-        self.constellation = Constellation(self.parser);
-        self.calculator = Calculator(self.constellation);
-        
-    #passes params into calculator for one mission
-    def load_current_mission():
-        
-        
-    #sees if there are still missions for which outputs have not been calculated
-    def missions_exist(datapath):
-        return 1
-        
+    def system_setup(self, datapath, misionpath):
+        self.parser = Parser(self.datapath, self.missionpath)
+        #self.constellation = Constellation(self.parser)
+        #self.calculator = Calculator(self.constellation)
     
-    def generate_imaging_opportunities(mission):
-        calculator.generate_imaging_opportunities(mission)
-        
+    
+    def generate_imaging_opportunities(self, mission, dataMatrices):
+       # self.calculator.generate_imaging_opportunities(mission, dataMatrices)
+        print('hi')
 
 #main code goes here
 #we will eventually define a main function so that the program can run as an executable
