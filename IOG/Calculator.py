@@ -9,11 +9,15 @@
 # Written by Jordan Jones and Nolan Heim
 #
 #For numpy.piecewise
+# TODO: Cite all equations from paper & paper itself.
 import numpy
 import math
 import matplotlib.pyplot as plt
+from Transformer import *
 from bisect import bisect_left
 import time as sleeper
+
+
 
 class Calculator:
     
@@ -28,20 +32,21 @@ class Calculator:
     
     def generate_imaging_opportunities(self, mission, dataMatrices):
         missionCoordinates = mission.get_coordinates()
-        missionStart = mission.get_interval_start_time()
-        missionEnd = mission.get_interval_end_time()
+        #missionStart = mission.get_interval_start_time()
+        #missionEnd = mission.get_interval_end_time()
+        [mStartJDTime, mEndJDTime] = mission.get_JD_time()
         position = missionCoordinates[0]
         position.append(0)
         print(position)
         
         for dataMatrix in dataMatrices:
-            poly = self.cubic_hermite_composite(dataMatrix, position)
+            poly = self.cubic_hermite_composite(dataMatrix, position, mStartJDTime)
             print(poly)
             t = [row[0] for row in dataMatrix]
             y = [poly[ti] for ti in t]
             plt.plot(t, y)
             plt.show()
-            VF = self.satellite_visibility(dataMatrix, position)
+            VF = self.satellite_visibility(dataMatrix, position, mStartJDTime)
             plt.plot(VF)
             plt.show()
             
@@ -79,15 +84,43 @@ class Calculator:
         if numpy.abs(afterIndex - target) < numpy.abs(target - beforeIndex):
             return index+1
         else:
-            return index     
+            return index
+            
+    #Computes the derivative of the visibility function at a given index
+    def compute_dV(self, index, dataECI, positionECI):
+        r_sat = [dataECI[index][0], dataECI[index][1], dataECI[index][2]]
+        v_sat = [dataECI[index][3], dataECI[index][4], dataECI[index][5]]
+                
+        r_site = [positionECI[0], positionECI[1], positionECI[2]]
+        r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site]
+
+        delta_r = [r_sat[0]-r_site[0], r_sat[1]-r_site[1], r_sat[2]-r_site[2]]
+        m_delta_r = self.get_vec_magnitude(delta_r)
+        
+        #What is v_site? zero?
+        d_delta_r = v_sat
+        v_site_unit = [0,0,0]
+        
+        dV = (((self.dot_product(d_delta_r, r_unit_site) + self.dot_product(delta_r, v_site_unit))/(m_delta_r)) - 
+            ((self.dot_product(delta_r, d_delta_r)*self.dot_product(delta_r, r_unit_site))/(m_delta_r**3.0)))
+        
+        return dV
+        
+    #Dot produce of two 3D vectors (i.e. lists)
+    def dot_product(self, v1, v2):
+        return (v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2])
         
     #This should combine the instances of each piecewise cubic hermite.
-    def cubic_hermite_composite(self, data, position):
+    def cubic_hermite_composite(self, data, position, JDtime):
         #This is the master method
         
         #Initial Conditions
-        times = [row[0] for row in data]
-        VF = self.satellite_visibility(data, times, position)
+        times = [row[0] for row in data]     
+        unitConversion = Transformer()
+        dataECI = [unitConversion.ecef_2_eci(l[1],l[2],l[3],l[4],l[5],l[6], JDtime) for l in data]
+        #MOVE Computation of position in ECI to here
+        positionECI = unitConversion.geo_2_eci(position[0], position[1], position[2], JDtime)
+        VF = self.satellite_visibility(dataECI, times, positionECI)
         #plt.plot(times, VF)
         #plt.show()
         
@@ -108,9 +141,9 @@ class Calculator:
             ViMinus = VF[indexMinus]
             ViHalf = (VF[indexMinus] + VF[index])/2 #THIS NEEDS TO CHANGE
             Vi = VF[index]
-            dViMinus = (VF[indexMinus+1] - VF[indexMinus])/(times[indexMinus+1] - times[indexMinus])
-            dViHalf = (VF[indexMinus] - VF[index])/hiMinus #MIGHT NEED TO CHANGE
-            dVi = (VF[index+1] - VF[index])/(times[index+1] - times[index])
+            dViMinus = self.compute_dV(indexMinus, dataECI, positionECI)
+            dViHalf = self.compute_dV(indexMinus+1, dataECI, positionECI) # TODO: Change Index
+            dVi = self.compute_dV(index, dataECI, positionECI)
             print([ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi])
             #Iterate through the max step (Need to add a maximum iteration reached check)
             k = 1    
@@ -172,13 +205,13 @@ class Calculator:
     #Converts the satellite position and time data into sin(theta) vs. seconds  
     #Assumes Position is in Lat/Long/Height
     #Assumes data is the satellite data matrix      
-    def satellite_visibility(self, data, times, position):
-        positionECEF = self.geodetic_to_ECEF(position[0], position[1], position[2])
-        angles = [((math.pi/2) - self.angle_between_vectors(line[1:4], positionECEF)) for line in data]     
+    def satellite_visibility(self, dataECI, times, positionECI):      
+        angles = [((math.pi/2) - self.angle_between_vectors(line[0:3], positionECI)) for line in dataECI]     
         sinAngles = [math.sin(angle) for angle in angles]
         
         return sinAngles
-        
+    
+    #WILL LIKELY BE DEPRECIATED AS ECEF IS NOT THE WORKING COORDINATE SYSTEM
     #Converts geodetic coordinates to ECEF
     def geodetic_to_ECEF(self, Lat, Long, height):
         a = self.equitorialRadius
@@ -200,4 +233,9 @@ class Calculator:
         theta = math.acos(dot/(magnitude1*magnitude2))
         
         return theta
+    
+    #returns the magnitude of the given vector    
+    def get_vec_magnitude(self, V):
+        magnitude = math.sqrt(V[0]**2 + V[1]**2 + V[2]**2)
         
+        return magnitude

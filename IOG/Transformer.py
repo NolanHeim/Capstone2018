@@ -11,7 +11,7 @@ import math
 
 class Transformer:
     
-    def ___init__(self):
+    def __init__(self):
         self.r_Earth = 6378137.0 #m
    
     
