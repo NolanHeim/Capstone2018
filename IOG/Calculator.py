@@ -203,13 +203,27 @@ class Calculator:
         
     #UNTESTED
     #Converts the satellite position and time data into sin(theta) vs. seconds  
-    #Assumes Position is in Lat/Long/Height
     #Assumes data is the satellite data matrix      
     def satellite_visibility(self, dataECI, times, positionECI):      
-        angles = [((math.pi/2) - self.angle_between_vectors(line[0:3], positionECI)) for line in dataECI]     
-        sinAngles = [math.sin(angle) for angle in angles]
+        r_sat = [[line[0], line[1], line[2]] for line in dataECI]
+        r_site = [positionECI[0], positionECI[1], positionECI[2]]
+
+        delta_r = [[line[0]-r_site[0], line[1]-r_site[1], line[2]-r_site[2]] for line in r_sat]
+        m_delta_r = [self.get_vec_magnitude(line) for line in delta_r]
+
+        r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site]
+
+        numerator = [self.dot_product(line, r_unit_site) for line in delta_r]
         
-        return sinAngles
+        VF = []
+
+        for index in range(0,len(numerator)):
+            VF.append(numerator[index]/m_delta_r[index])
+        
+        return VF
+    
+    
+    
     
     #WILL LIKELY BE DEPRECIATED AS ECEF IS NOT THE WORKING COORDINATE SYSTEM
     #Converts geodetic coordinates to ECEF
