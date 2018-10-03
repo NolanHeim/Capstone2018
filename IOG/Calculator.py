@@ -91,16 +91,20 @@ class Calculator:
         r_sat = [dataECI[index][0], dataECI[index][1], dataECI[index][2]]
         v_sat = [dataECI[index][3], dataECI[index][4], dataECI[index][5]]
                 
-        r_site = [positionECI[0], positionECI[1], positionECI[2]]
+        r_site = [positionECI[index][0], positionECI[index][1], positionECI[index][2]]
+        v_site = [positionECI[index][3], positionECI[index][4], positionECI[index][5]]
+        
         r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site]
 
         delta_r = [r_sat[0]-r_site[0], r_sat[1]-r_site[1], r_sat[2]-r_site[2]]
         m_delta_r = self.get_vec_magnitude(delta_r)
-        
+
         #What is v_site? zero?
-        d_delta_r = v_sat
-        v_site_unit = [0,0,0]
-        
+        d_delta_r = [(v_sat[i] - v_site[i]) for i in range(0,len(v_sat))]
+        v_site_unit = self.unit_vector(v_site)
+
+        #print("size of v site unit "+str(len(v_site_unit)+" "+str(len(v_site_unit[0]))))
+
         dV = (((self.dot_product(d_delta_r, r_unit_site) + self.dot_product(delta_r, v_site_unit))/(m_delta_r)) - 
             ((self.dot_product(delta_r, d_delta_r)*self.dot_product(delta_r, r_unit_site))/(m_delta_r**3.0)))
         
@@ -110,6 +114,11 @@ class Calculator:
     def dot_product(self, v1, v2):
         return (v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2])
         
+
+    def unit_vector(self, v):
+        mag = self.get_vec_magnitude(v)
+        return [v[0]/mag, v[1]/mag, v[2]/mag]        
+        
     #This should combine the instances of each piecewise cubic hermite.
     def cubic_hermite_composite(self, data, position, JDtime):
         #This is the master method
@@ -118,8 +127,13 @@ class Calculator:
         times = [row[0] for row in data]     
         unitConversion = Transformer()
         dataECI = [unitConversion.ecef_2_eci(l[1],l[2],l[3],l[4],l[5],l[6], JDtime) for l in data]
+
         #MOVE Computation of position in ECI to here
-        positionECI = unitConversion.geo_2_eci(position[0], position[1], position[2], JDtime)
+        #positionECI = unitConversion.geo_2_eci(position[0], position[1], position[2], JDtime)
+        
+        positionECI = unitConversion.construct_site_matrix(position[0], position[1], position[2], times, JDtime)
+
+
         VF = self.satellite_visibility(dataECI, times, positionECI)
         #plt.plot(times, VF)
         #plt.show()
@@ -203,17 +217,22 @@ class Calculator:
         
     #UNTESTED
     #Converts the satellite position and time data into sin(theta) vs. seconds  
-    #Assumes data is the satellite data matrix      
+    #Assumes data is the satellite data matrix
+    #Assumes position is the site position matrix
     def satellite_visibility(self, dataECI, times, positionECI):      
         r_sat = [[line[0], line[1], line[2]] for line in dataECI]
-        r_site = [positionECI[0], positionECI[1], positionECI[2]]
+        r_site = [[line[0], line[1], line[2]] for line in positionECI]
 
-        delta_r = [[line[0]-r_site[0], line[1]-r_site[1], line[2]-r_site[2]] for line in r_sat]
+        delta_r = [[r_sat[k][0]-r_site[k][0], r_sat[k][1]-r_site[k][1], r_sat[k][2]-r_site[k][2]] for k in range(0, len(r_sat))]
         m_delta_r = [self.get_vec_magnitude(line) for line in delta_r]
 
-        r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site]
+        #r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site] #should be a vector with one for each time
+        r_unit_site = []        
+        for pos in r_site:
+            r_unit_site.append([(i/self.get_vec_magnitude(pos)) for i in pos])
 
-        numerator = [self.dot_product(line, r_unit_site) for line in delta_r]
+
+        numerator = [self.dot_product(delta_r[j], r_unit_site[j]) for j in range(0, len(delta_r))]
         
         VF = []
 
