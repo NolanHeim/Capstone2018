@@ -25,7 +25,9 @@ class Calculator:
         self.equitorialRadius = 6378137.0 #m
         self.polarRadius = 6356752.3 #m
         self.hermiteError = 0.1
-        self.timeStepTolerance = 0.01    
+        self.timeStepTolerance = 0.01  
+        
+        self.plot = False
     
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
@@ -51,9 +53,6 @@ class Calculator:
             plt.show()
             
             
-    
-    
-    
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         condition = lambda t: tiMinus <= t <= ti        
         Ci = lambda t: ((Vi*(3.0*hi*((t - tiMinus)**2.0) - 2.0*((t - tiMinus)**2.0)/(hi**3.0))) +
@@ -61,17 +60,17 @@ class Calculator:
                         (dVi*(((t - tiMinus)**2.0)*(t - ti))/(hi**2.0)) +
                         (dViMinus*((t - tiMinus)*((t - ti)**2))/(hi**2.0)) )
         return [condition, Ci]
-        
+    
+    
     def max_time_step(self, hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti):
         a5 = self.compute_a5(hi, ViMinus, Vi, dViMinus, dViHalf, dVi)
         a4 = self.compute_a4(hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti)
-        print(a4)
-        print(a5)
         maxDenominator = max([numpy.abs(5.0*a5*t + a4) for t in [tiMinus, ti]])
         print(maxDenominator)
-        hMax = ((16*self.hermiteError)/(maxDenominator))**(0.25) 
+        hMax = math.pow(((16.0*self.hermiteError)/(maxDenominator)),0.25) 
             
         return hMax
+
         
     def binary_List_Search(self,dataList, target):
         index = bisect_left(dataList, target)
@@ -85,6 +84,7 @@ class Calculator:
             return index+1
         else:
             return index
+
             
     #Computes the derivative of the visibility function at a given index
     def compute_dV(self, index, dataECI, positionECI):
@@ -106,7 +106,7 @@ class Calculator:
         #print("size of v site unit "+str(len(v_site_unit)+" "+str(len(v_site_unit[0]))))
 
         dV = (((self.dot_product(d_delta_r, r_unit_site) + self.dot_product(delta_r, v_site_unit))/(m_delta_r)) - 
-            ((self.dot_product(delta_r, d_delta_r)*self.dot_product(delta_r, r_unit_site))/(m_delta_r**3.0)))
+            ((self.dot_product(delta_r, d_delta_r)*self.dot_product(delta_r, r_unit_site))/(math.pow(m_delta_r,3.0))))
         
         return dV
         
@@ -126,7 +126,7 @@ class Calculator:
         #Initial Conditions
         times = [row[0] for row in data]     
         unitConversion = Transformer()
-        dataECI = [unitConversion.ecef_2_eci(l[1],l[2],l[3],l[4],l[5],l[6], JDtime) for l in data]
+        dataECI = [unitConversion.ecef_2_eci(l[1],l[2],l[3],l[4],l[5],l[6], l[0], JDtime) for l in data]
 
         #MOVE Computation of position in ECI to here
         #positionECI = unitConversion.geo_2_eci(position[0], position[1], position[2], JDtime)
@@ -135,8 +135,10 @@ class Calculator:
 
 
         VF = self.satellite_visibility(dataECI, times, positionECI)
-        #plt.plot(times, VF)
-        #plt.show()
+
+        if(self.plot):
+            plt.plot(times, VF)
+            plt.show()
         
         indexMinus = 0        
         tiMinus = times[indexMinus]
@@ -145,7 +147,11 @@ class Calculator:
         index = self.binary_List_Search(times, hiMinus)
         ti = times[index]
         
-        endOfTime = False
+        if(self.plot):
+            endOfTime = True        
+        else:
+            endOfTime = False
+    
         polySlices = []
         conditionSlices = []
         #Loop through the potential values
@@ -206,14 +212,15 @@ class Calculator:
         return cubicHermitePoly
         
     def compute_a5(self, hi, ViMinus, Vi, dViMinus, dViHalf, dVi):
-        a5 = (24.0/(hi**5.0))*(ViMinus - Vi) + (4.0/(hi**4.0))*(dViMinus + 4.0*dViHalf + dVi)        
+        a5 = (24.0/(math.pow(hi,5.0)))*(ViMinus - Vi) + (4.0/(math.pow(hi,4.0)))*(dViMinus + 4.0*dViHalf + dVi)        
         return a5
 
     def compute_a4(self, hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti):
-        a4 = ( (4.0/(hi**4.0))*(ViMinus + 4.0*ViHalf + Vi) -
-                (4.0/(hi**4.0))*(dViMinus*(2.0*tiMinus + 3.0*ti) + 10.0*dViHalf*(tiMinus - ti) + dVi*(3.0*tiMinus - 2.0*ti)) -
-                (24.0/(hi**5.0))*(ViMinus*(2.0*tiMinus + 3.0*ti) - Vi*(3.0*tiMinus + 2.0*ti)) )
+        a4 = ( (4.0/(math.pow(hi,4.0)))*(ViMinus + 4.0*ViHalf + Vi) -
+                (4.0/(math.pow(hi,4.0)))*(dViMinus*(2.0*tiMinus + 3.0*ti) + 10.0*dViHalf*(tiMinus + ti) + dVi*(3.0*tiMinus + 2.0*ti)) -
+                (24.0/(math.pow(hi,5.0)))*(ViMinus*(2.0*tiMinus + 3.0*ti) - Vi*(3.0*tiMinus + 2.0*ti)) )
         return a4
+
         
     #UNTESTED
     #Converts the satellite position and time data into sin(theta) vs. seconds  
