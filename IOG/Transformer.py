@@ -8,6 +8,7 @@
 #
 
 import math
+import numpy as np
 
 class Transformer:
     
@@ -18,52 +19,44 @@ class Transformer:
         self.Seconds_Per_Hour = 3600.0
    
     
-    def geo_2_eci(self, lat, lon, alt, JDtime): #theta in radians
-        theta = self.get_theta(JDtime) 
+    def geo_2_eci(self, lat, lon, alt, time, JDtime): #theta in radians
+        theta = self.get_theta(JDtime + self.seconds_2_days(time)) 
         
-        phi = theta + math.radians(lon)
+        phi = theta + np.radians(lon)
         phi_dot = 2.0*math.pi/self.Seconds_Per_Day_Stars
-        #phi_dot = 2.0*math.pi/self.Seconds_Per_Hour
         
         radius = alt + self.r_Earth*math.cos(math.radians(lat))
-        x = radius*math.cos(phi)
-        y = radius*math.sin(phi)
-        z = (alt + self.r_Earth)*math.sin(math.radians(lat))
+        x = radius*np.cos(phi)
+        y = radius*np.sin(phi)
+        z = (alt + self.r_Earth)*np.sin(np.radians(lat))*np.ones(theta.shape)
         
-        vx = (-1.0)*radius*math.sin(phi)*phi_dot
-        vy = radius*math.cos(phi)*phi_dot
-        vz = 0.0        
-        
-        return [x, y, z, vx, vy, vz]
+        vx = (-1.0)*radius*np.sin(phi)*phi_dot
+        vy = radius*np.cos(phi)*phi_dot
+        vz = np.zeros(theta.shape) #Needs to be same dimension but zero
+
+        return np.column_stack([x, y, z, vx, vy, vz])
         
 
     def ecef_2_eci(self, x, y, z, vx, vy, vz, time, JDtime):
         theta = self.get_theta(JDtime + self.seconds_2_days(time))
 
         #positional arguemnts        
-        xECI = x*math.cos(theta) - y*math.sin(theta)
-        yECI = x*math.sin(theta) + y*math.cos(theta)
+        xECI = x*np.cos(theta) - y*np.sin(theta)
+        yECI = x*np.sin(theta) + y*np.cos(theta)
         zECI = z
         
         #veclocity arguments
-        vxECI = vx*math.cos(theta) - vy*math.sin(theta)
-        vyECI = vx*math.sin(theta) + vy*math.cos(theta)
+        vxECI = vx*np.cos(theta) - vy*np.sin(theta)
+        vyECI = vx*np.sin(theta) + vy*np.cos(theta)
         vzECI = vz
         
-        return [xECI, yECI, zECI, vxECI, vyECI, vzECI]        
+        return np.column_stack([xECI, yECI, zECI, vxECI, vyECI, vzECI])        
         
 
-    def construct_site_matrix(self, lat, lon, alt, times, JDtime):
-        matrix = []        
+    def construct_site_matrix(self, lat, lon, alt, times, JDtime):        
+        siteMatrix = self.geo_2_eci(lat, lon, alt, times, JDtime)            
         
-        for i in range(0,len(times)):
-            JD_new = JDtime + self.seconds_2_days(times[i])
-            
-            siteInfoLine = self.geo_2_eci(lat, lon, alt, JD_new)            
-            
-            matrix.append(siteInfoLine)
-        
-        return matrix
+        return siteMatrix
     
     
     def seconds_2_days(self, t_sec):
@@ -74,4 +67,4 @@ class Transformer:
         day = JDtime - 2451545.0
         GMST = 18.697374558 + 24.06570982441908*day
 #        return GMST*(2.0*math.pi/24.0)
-        return GMST*(2.0*math.pi/self.Seconds_Per_Day)
+        return GMST*(2.0*np.pi/self.Seconds_Per_Day)

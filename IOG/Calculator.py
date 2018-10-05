@@ -10,7 +10,7 @@
 #
 #For numpy.piecewise
 # TODO: Cite all equations from paper & paper itself.
-import numpy
+import numpy as np
 import math
 import matplotlib.pyplot as plt
 from Transformer import *
@@ -37,21 +37,22 @@ class Calculator:
         #missionStart = mission.get_interval_start_time()
         #missionEnd = mission.get_interval_end_time()
         [mStartJDTime, mEndJDTime] = mission.get_JD_time()
-        position = missionCoordinates[0]
-        position.append(0)
+        position = np.array(missionCoordinates[0])
         print(position)
-        
-        for dataMatrix in dataMatrices:
-            poly = self.cubic_hermite_composite(dataMatrix, position, mStartJDTime)
-            print(poly)
-            t = [row[0] for row in dataMatrix]
-            y = [poly[ti] for ti in t]
-            plt.plot(t, y)
-            plt.show()
-            VF = self.satellite_visibility(dataMatrix, position, mStartJDTime)
-            plt.plot(VF)
-            plt.show()
-            
+        #Check to see if there is only 1 set of satellite data (matrix is only 2D)
+        if(len(dataMatrices.shape) > 2):       
+            for dataMatrix in dataMatrices:
+                poly = self.cubic_hermite_composite(dataMatrix, position, mStartJDTime)
+                print(poly)
+                t = [row[0] for row in dataMatrix]
+                y = [poly[ti] for ti in t]
+                plt.plot(t, y)
+                plt.show()
+                VF = self.satellite_visibility(dataMatrix, position, mStartJDTime)
+                plt.plot(VF)
+                plt.show()
+        else:
+            poly = self.cubic_hermite_composite(dataMatrices, position, mStartJDTime)
             
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         condition = lambda t: tiMinus <= t <= ti        
@@ -65,48 +66,63 @@ class Calculator:
     def max_time_step(self, hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti):
         a5 = self.compute_a5(hi, ViMinus, Vi, dViMinus, dViHalf, dVi)
         a4 = self.compute_a4(hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti)
-        maxDenominator = max([numpy.abs(5.0*a5*t + a4) for t in [tiMinus, ti]])
+        maxDenominator = max([np.abs(5.0*a5*t + a4) for t in [tiMinus, ti]])
         print(maxDenominator)
-        hMax = math.pow(((16.0*self.hermiteError)/(maxDenominator)),0.25) 
+        hMax = np.power(((16.0*self.hermiteError)/(maxDenominator)),0.25) 
             
         return hMax
 
         
-    def binary_List_Search(self,dataList, target):
-        index = bisect_left(dataList, target)
-        if index == 0:
-            return 0
-        if index == len(dataList):
-            return len(dataList)-1
-        beforeIndex = dataList[index]
-        afterIndex = dataList[index+1]
-        if numpy.abs(afterIndex - target) < numpy.abs(target - beforeIndex):
-            return index+1
-        else:
-            return index
+    def binary_List_Search(self, dataList, target):
+        index = (np.abs(dataList - target)).argmin()
+        return index
+        #index = bisect_left(dataList, target)
+        #if index == 0:
+        #    return 0
+        #if index == len(dataList):
+        #    return len(dataList)-1
+        #beforeIndex = dataList[index]
+        #afterIndex = dataList[index+1]
+        #if np.abs(afterIndex - target) < np.abs(target - beforeIndex):
+        #    return index+1
+        #else:
+        #    return index
 
             
     #Computes the derivative of the visibility function at a given index
+    #TODO Generate a look up table of these (we will be computing these multiple times.)
     def compute_dV(self, index, dataECI, positionECI):
-        r_sat = [dataECI[index][0], dataECI[index][1], dataECI[index][2]]
-        v_sat = [dataECI[index][3], dataECI[index][4], dataECI[index][5]]
-                
-        r_site = [positionECI[index][0], positionECI[index][1], positionECI[index][2]]
-        v_site = [positionECI[index][3], positionECI[index][4], positionECI[index][5]]
+        #r_sat = [dataECI[index][0], dataECI[index][1], dataECI[index][2]]
+        r_sat = dataECI[index,0:3]        
+        #v_sat = [dataECI[index][3], dataECI[index][4], dataECI[index][5]]
+        v_sat = dataECI[index,3:6]
         
-        r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site]
-
-        delta_r = [r_sat[0]-r_site[0], r_sat[1]-r_site[1], r_sat[2]-r_site[2]]
-        m_delta_r = self.get_vec_magnitude(delta_r)
-
-        #What is v_site? zero?
-        d_delta_r = [(v_sat[i] - v_site[i]) for i in range(0,len(v_sat))]
-        v_site_unit = self.unit_vector(v_site)
-
+        #r_site = [positionECI[index][0], positionECI[index][1], positionECI[index][2]]
+        r_site = positionECI[index,0:3]        
+        #v_site = [positionECI[index][3], positionECI[index][4], positionECI[index][5]]
+        v_site = positionECI[index,3:6]        
+        
+        #r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site]
+        r_unit_site = r_site/(np.sqrt(np.sum(r_site*r_site)))
+        
+        
+        #delta_r = [r_sat[0]-r_site[0], r_sat[1]-r_site[1], r_sat[2]-r_site[2]]
+        delta_r = r_sat-r_site        
+        #m_delta_r = self.get_vec_magnitude(delta_r)
+        m_delta_r = np.sqrt(np.sum(delta_r*delta_r))        
+        
+        d_delta_r = v_sat - v_site
+        #d_delta_r = [(v_sat[i] - v_site[i]) for i in range(0,len(v_sat))]
+        #v_site_unit = self.unit_vector(v_site)
+        v_site_unit = v_site/(np.sqrt(np.sum(v_site*v_site)))
+        
         #print("size of v site unit "+str(len(v_site_unit)+" "+str(len(v_site_unit[0]))))
-
-        dV = (((self.dot_product(d_delta_r, r_unit_site) + self.dot_product(delta_r, v_site_unit))/(m_delta_r)) - 
-            ((self.dot_product(delta_r, d_delta_r)*self.dot_product(delta_r, r_unit_site))/(math.pow(m_delta_r,3.0))))
+        dV = ( ((np.sum(d_delta_r*r_unit_site) + np.sum(delta_r*v_site_unit))/m_delta_r) - 
+                ((np.sum(delta_r*d_delta_r)*np.sum(delta_r*r_unit_site))/np.power(m_delta_r,3.0)))
+        
+        
+       # dV = (((self.dot_product(d_delta_r, r_unit_site) + self.dot_product(delta_r, v_site_unit))/(m_delta_r)) - 
+       #     ((self.dot_product(delta_r, d_delta_r)*self.dot_product(delta_r, r_unit_site))/(np.pow(m_delta_r,3.0))))
         
         return dV
         
@@ -124,15 +140,18 @@ class Calculator:
         #This is the master method
         
         #Initial Conditions
-        times = [row[0] for row in data]     
+        #times = [row[0] for row in data]
+        print(np.size(data))
+        times = data[:,0]
         unitConversion = Transformer()
-        dataECI = [unitConversion.ecef_2_eci(l[1],l[2],l[3],l[4],l[5],l[6], l[0], JDtime) for l in data]
-
+        #dataECI = [unitConversion.ecef_2_eci(l[1],l[2],l[3],l[4],l[5],l[6], l[0], JDtime) for l in data]
+        dataECI = unitConversion.ecef_2_eci(data[:,1], data[:,2], data[:,3], data[:,4], data[:,5], data[:,6],data[:,0], JDtime)        
+        
         #MOVE Computation of position in ECI to here
         #positionECI = unitConversion.geo_2_eci(position[0], position[1], position[2], JDtime)
         
+        #positionECI = unitConversion.construct_site_matrix(position[0], position[1], position[2], times, JDtime)
         positionECI = unitConversion.construct_site_matrix(position[0], position[1], position[2], times, JDtime)
-
 
         VF = self.satellite_visibility(dataECI, times, positionECI)
 
@@ -140,11 +159,12 @@ class Calculator:
             plt.plot(times, VF)
             plt.show()
         
-        indexMinus = 0        
+        indexMinus = 1        
         tiMinus = times[indexMinus]
-        hiMinus = 1200 #Might have to tweak this parameter
+        hiMinus = 12000 #Might have to tweak this parameter
         hi = hiMinus
         index = self.binary_List_Search(times, hiMinus)
+        indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))
         ti = times[index]
         
         if(self.plot):
@@ -156,46 +176,44 @@ class Calculator:
         conditionSlices = []
         #Loop through the potential values
         while endOfTime == False:
-            
-            #Compute Derivatives
-            ViMinus = VF[indexMinus]
-            ViHalf = (VF[indexMinus] + VF[index])/2 #THIS NEEDS TO CHANGE
-            Vi = VF[index]
-            dViMinus = self.compute_dV(indexMinus, dataECI, positionECI)
-            dViHalf = self.compute_dV(indexMinus+1, dataECI, positionECI) # TODO: Change Index
-            dVi = self.compute_dV(index, dataECI, positionECI)
-            print([ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi])
             #Iterate through the max step (Need to add a maximum iteration reached check)
             k = 1    
             kTolMet = False
             while k < 100 and kTolMet == False:
-                hi = self.max_time_step(hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti) 
+                #Compute Derivatives
+                ViMinus = VF[indexMinus]
+                ViHalf = VF[indexHalf] #THIS NEEDS TO CHANGE
+                Vi = VF[index]
+                dViMinus = self.compute_dV(indexMinus, dataECI, positionECI)
+                dViHalf = self.compute_dV(indexHalf, dataECI, positionECI) # TODO: Change Index
+                dVi = self.compute_dV(index, dataECI, positionECI)
+                print([ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi])                
+                
+                
+                hi = self.max_time_step(hiMinus, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti)
+                
                 print('Max TIME')                
                 print(hi)
                 sleeper.sleep(3)
-                expTol = (numpy.abs(hi - hiMinus))/hiMinus
-                print('ExpTol')
-                print(expTol)
+                expTol = (np.abs(hi - hiMinus))/hiMinus
+ 
+                index = self.binary_List_Search(times, tiMinus+hi)
+                indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))
+                ti = times[index]
                 if(expTol > self.timeStepTolerance):
                     hiMinus = hi
-                #elif(hiMinus > hi):
-                    #Condition is met
-                #    kTolMet = True
-                #    hi = hiMinus
                 else:
                     #Condition is met
                     kTolMet = True
                 k = k + 1
                 
-            sleeper.sleep(5)
+            sleeper.sleep(0.2)
             print(hi)
             hiMinus = hi
             #Interpolate based on the time step hi
             tiMinus = ti
             index = indexMinus
             #Might need to add a 'round down' condition to this for accuracy
-            index = self.binary_List_Search(times, tiMinus+hi)
-            ti = times[index]
             if(ti >= times[-1]):
                 ti = times[-1]
                 endOfTime = True
@@ -207,18 +225,18 @@ class Calculator:
              #cubic hermite interpolating polynomial
          
         #When using the output of this, need numpy.asscalar(ANS) to retreive value
-        cubicHermitePoly = lambda t: numpy.asscalar(numpy.piecewise(t, conditionSlices, polySlices))
+        cubicHermitePoly = lambda t: np.asscalar(np.piecewise(t, conditionSlices, polySlices))
         
         return cubicHermitePoly
         
     def compute_a5(self, hi, ViMinus, Vi, dViMinus, dViHalf, dVi):
-        a5 = (24.0/(math.pow(hi,5.0)))*(ViMinus - Vi) + (4.0/(math.pow(hi,4.0)))*(dViMinus + 4.0*dViHalf + dVi)        
+        a5 = (24.0/(np.power(hi,5.0)))*(ViMinus - Vi) + (4.0/(np.power(hi,4.0)))*(dViMinus + 4.0*dViHalf + dVi)        
         return a5
 
     def compute_a4(self, hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti):
-        a4 = ( (4.0/(math.pow(hi,4.0)))*(ViMinus + 4.0*ViHalf + Vi) -
-                (4.0/(math.pow(hi,4.0)))*(dViMinus*(2.0*tiMinus + 3.0*ti) + 10.0*dViHalf*(tiMinus + ti) + dVi*(3.0*tiMinus + 2.0*ti)) -
-                (24.0/(math.pow(hi,5.0)))*(ViMinus*(2.0*tiMinus + 3.0*ti) - Vi*(3.0*tiMinus + 2.0*ti)) )
+        a4 = ( (4.0/(np.power(hi,4.0)))*(ViMinus + 4.0*ViHalf + Vi) -
+                (4.0/(np.power(hi,4.0)))*(dViMinus*(2.0*tiMinus + 3.0*ti) + 10.0*dViHalf*(tiMinus + ti) + dVi*(3.0*tiMinus + 2.0*ti)) -
+                (24.0/(np.power(hi,5.0)))*(ViMinus*(2.0*tiMinus + 3.0*ti) - Vi*(3.0*tiMinus + 2.0*ti)) )
         return a4
 
         
@@ -227,25 +245,33 @@ class Calculator:
     #Assumes data is the satellite data matrix
     #Assumes position is the site position matrix
     def satellite_visibility(self, dataECI, times, positionECI):      
-        r_sat = [[line[0], line[1], line[2]] for line in dataECI]
-        r_site = [[line[0], line[1], line[2]] for line in positionECI]
-
-        delta_r = [[r_sat[k][0]-r_site[k][0], r_sat[k][1]-r_site[k][1], r_sat[k][2]-r_site[k][2]] for k in range(0, len(r_sat))]
-        m_delta_r = [self.get_vec_magnitude(line) for line in delta_r]
-
+        #r_sat = [[line[0], line[1], line[2]] for line in dataECI]
+        r_sat = dataECI[:,0:3]        
+        #r_site = [[line[0], line[1], line[2]] for line in positionECI]
+        r_site = positionECI[:,0:3]
+        delta_r = r_sat - r_site
+        #delta_r = [[r_sat[k][0]-r_site[k][0], r_sat[k][1]-r_site[k][1], r_sat[k][2]-r_site[k][2]] for k in range(0, len(r_sat))]
+        #m_delta_r = [self.get_vec_magnitude(line) for line in delta_r]
+        m_delta_r = np.sqrt(np.sum(delta_r*delta_r, axis=1))
+        
         #r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site] #should be a vector with one for each time
-        r_unit_site = []        
-        for pos in r_site:
-            r_unit_site.append([(i/self.get_vec_magnitude(pos)) for i in pos])
+        #r_unit_site = []        
+        #for pos in r_site:
+        #    r_unit_site.append([(i/self.get_vec_magnitude(pos)) for i in pos])
+        m_r_site = np.sqrt(np.sum(r_site*r_site, axis=1))
+        r_unit_site = r_site/m_r_site[:,None]
 
-
-        numerator = [self.dot_product(delta_r[j], r_unit_site[j]) for j in range(0, len(delta_r))]
+        #numerator = [self.dot_product(delta_r[j], r_unit_site[j]) for j in range(0, len(delta_r))]
+        numerator = np.sum(delta_r*r_unit_site, axis=1)   
         
-        VF = []
+        #VF = []
 
-        for index in range(0,len(numerator)):
-            VF.append(numerator[index]/m_delta_r[index])
+        #for index in range(0,len(numerator)):
+        #    VF.append(numerator[index]/m_delta_r[index])
+        #print(numerator)
+        #print(m_delta_r)
         
+        VF = numerator/m_delta_r        
         return VF
     
     

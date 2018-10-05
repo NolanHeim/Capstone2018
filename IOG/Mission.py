@@ -8,6 +8,7 @@
 #
 # Written by Jordan Jones and Nolan Heim
 #
+import numpy as np
 import datetime
 
 class Mission:
@@ -53,6 +54,7 @@ class Mission:
     
     
     def get_coordinates(self):
+        self.targetCoordinates[0].append(0.0) #Accounting for altitude
         return self.targetCoordinates
         
     

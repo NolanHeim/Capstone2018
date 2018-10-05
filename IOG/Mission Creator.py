@@ -29,23 +29,33 @@ class MissionCreator:
         
         #parser already contains missionpath
         missions = self.parser.create_missions()
-        dataMatricesWithExtraInfo = self.load_data_matrices()
-
-        dataMatrices = []
-        print("L = "+str(len(dataMatricesWithExtraInfo)))
-        for matrix in range(0, len(dataMatricesWithExtraInfo)):
-            dataMatrix = []
-            for i in range(0, len(dataMatricesWithExtraInfo[matrix][1])):
-                dataLine = []
-                for j in range(0, len(dataMatricesWithExtraInfo[matrix][1][i])):
-                    dataLine.append(float(dataMatricesWithExtraInfo[matrix][1][i][j]))
-                dataMatrix.append(dataLine)            
-            dataMatrices.append(dataMatrix)
+        dataMatricesWithExtraInfo = np.array(self.load_data_matrices())
+        
+        dataMatrix = []
+        #Extract the top vector of each data matrix.
+        for dataline in dataMatricesWithExtraInfo[:,0]:
+            dataMatrix.append(dataline)
+        
+        #Delete the extra top vector from the data matrices
+        # TODO Might need to be modified for multiple files.
+        dataMatrices = np.array(dataMatricesWithExtraInfo[0,1])
+        
+        #This can be streamlined... pretty sure we dont need to re-create the matrix
+        #dataMatrices = []
+        #print("L = "+str(len(dataMatricesWithExtraInfo)))
+        #for matrix in range(0, len(dataMatricesWithExtraInfo)):
+        #    dataMatrix = []
+        #    for i in range(0, len(dataMatricesWithExtraInfo[matrix][1])):
+        #        dataLine = []
+        #        for j in range(0, len(dataMatricesWithExtraInfo[matrix][1][i])):
+        #            dataLine.append(float(dataMatricesWithExtraInfo[matrix][1][i][j]))
+        #        dataMatrix.append(dataLine)            
+        #    dataMatrices.append(dataMatrix)
 
         #Data Loading Test Code
         print(len(dataMatrices))
         print(len(dataMatrices[0]))
-        print(len(dataMatrices[0][0]))
+        #print(len(dataMatrices[0,0]))
         
         for mission in missions:        
            self.generate_imaging_opportunities(mission, dataMatrices) #main functions
@@ -75,8 +85,7 @@ class MissionCreator:
             #dataMatrices.append(self.load(self.parsed_datapath+filename))
             dataMatrices.append(np.load(self.parsed_datapath+filename))
             #dataMatrices = (np.load(self.parsed_datapath+filename))
-                
-        
+            
         return dataMatrices
     
     
