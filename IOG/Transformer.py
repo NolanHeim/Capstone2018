@@ -19,8 +19,12 @@ class Transformer:
         self.Seconds_Per_Hour = 3600.0
    
     
-    def geo_2_eci(self, lat, lon, alt, time, JDtime): #theta in radians
-        theta = self.get_theta(JDtime + self.seconds_2_days(time)) 
+    def geo_2_eci(self, lat, lon, alt, times, JDtime): #theta in radians
+        theta = self.get_theta(JDtime + self.seconds_2_days(times)) 
+        
+        print("Length of time in Transformer is "+str(len(times)))        
+        print("Length of theta is then "+str(len(theta)))
+        print("Theta difference is "+str(theta[800] - theta[0]))        
         
         phi = theta + np.radians(lon)
         phi_dot = 2.0*math.pi/self.Seconds_Per_Day_Stars
@@ -29,6 +33,8 @@ class Transformer:
         x = radius*np.cos(phi)
         y = radius*np.sin(phi)
         z = (alt + self.r_Earth)*np.sin(np.radians(lat))*np.ones(theta.shape)
+        
+        print("length of x is "+str(len(x)))        
         
         vx = (-1.0)*radius*np.sin(phi)*phi_dot
         vy = radius*np.cos(phi)*phi_dot
@@ -49,6 +55,9 @@ class Transformer:
         vxECI = vx*np.cos(theta) - vy*np.sin(theta)
         vyECI = vx*np.sin(theta) + vy*np.cos(theta)
         vzECI = vz
+        
+        np.sin(theta)*((theta[1] - theta[0])/(time[1]- time[0]))
+        
         
         return np.column_stack([xECI, yECI, zECI, vxECI, vyECI, vzECI])        
         

@@ -147,11 +147,12 @@ class Calculator:
         #dataECI = [unitConversion.ecef_2_eci(l[1],l[2],l[3],l[4],l[5],l[6], l[0], JDtime) for l in data]
         dataECI = unitConversion.ecef_2_eci(data[:,1], data[:,2], data[:,3], data[:,4], data[:,5], data[:,6],data[:,0], JDtime)        
         
-        #MOVE Computation of position in ECI to here
-        #positionECI = unitConversion.geo_2_eci(position[0], position[1], position[2], JDtime)
-        
-        #positionECI = unitConversion.construct_site_matrix(position[0], position[1], position[2], times, JDtime)
         positionECI = unitConversion.construct_site_matrix(position[0], position[1], position[2], times, JDtime)
+
+        print("Position Matrix Data: X difference is "+str(positionECI[800][0] - positionECI[0][0]))
+        print("They are "+str(positionECI[800][0])+" "+str(positionECI[0][0]))
+        print("Position Matrix Dimensions are "+str(len(positionECI))+" "+str(len(positionECI[0])))
+
 
         VF = self.satellite_visibility(dataECI, times, positionECI)
 
@@ -159,12 +160,18 @@ class Calculator:
             plt.plot(times, VF)
             plt.show()
         
-        indexMinus = 1        
+        #indexMinus = 1
+        indexMinus = 0
         tiMinus = times[indexMinus]
-        hiMinus = 12000 #Might have to tweak this parameter
+#        hiMinus = 12000 #Might have to tweak this parameter
+        hiMinus = 200 #Might have to tweak this parameter
+                
         hi = hiMinus
         index = self.binary_List_Search(times, hiMinus)
         indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))
+        
+        print("Minus Half Index: "+str(indexMinus)+" "+str(index)+" "+str(indexHalf))        
+        
         ti = times[index]
         
         if(self.plot):
@@ -244,7 +251,8 @@ class Calculator:
     #Converts the satellite position and time data into sin(theta) vs. seconds  
     #Assumes data is the satellite data matrix
     #Assumes position is the site position matrix
-    def satellite_visibility(self, dataECI, times, positionECI):      
+    def satellite_visibility(self, dataECI, times, positionECI):  
+        print("Length of dataECI[0] is "+str(len(dataECI[0])))
         #r_sat = [[line[0], line[1], line[2]] for line in dataECI]
         r_sat = dataECI[:,0:3]        
         #r_site = [[line[0], line[1], line[2]] for line in positionECI]
@@ -254,12 +262,18 @@ class Calculator:
         #m_delta_r = [self.get_vec_magnitude(line) for line in delta_r]
         m_delta_r = np.sqrt(np.sum(delta_r*delta_r, axis=1))
         
+        print("Size of mag of delta r is "+str(len(m_delta_r)))        
+        
         #r_unit_site = [(i/self.get_vec_magnitude(r_site)) for i in r_site] #should be a vector with one for each time
         #r_unit_site = []        
         #for pos in r_site:
         #    r_unit_site.append([(i/self.get_vec_magnitude(pos)) for i in pos])
         m_r_site = np.sqrt(np.sum(r_site*r_site, axis=1))
         r_unit_site = r_site/m_r_site[:,None]
+
+        print("Size of r unit site is "+str(len(r_unit_site)))        
+        print("Size of r unit site [0] is "+str(len(r_unit_site[0])))
+        print(str(r_unit_site[0]))
 
         #numerator = [self.dot_product(delta_r[j], r_unit_site[j]) for j in range(0, len(delta_r))]
         numerator = np.sum(delta_r*r_unit_site, axis=1)   
