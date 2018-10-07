@@ -20,14 +20,18 @@ class Transformer:
    
     
     def geo_2_eci(self, lat, lon, alt, times, JDtime): #theta in radians
-        theta = self.get_theta(JDtime + self.seconds_2_days(times)) 
+        print('JD time: ' + str(JDtime))
+        print(times)
+        print(self.seconds_2_days(times))
         
+        theta = self.get_theta(JDtime + self.seconds_2_days(times)) 
+        print(theta)
         print("Length of time in Transformer is "+str(len(times)))        
         print("Length of theta is then "+str(len(theta)))
-        print("Theta difference is "+str(theta[800] - theta[0]))        
+        print("Theta difference is "+str(theta[800] - theta[0]))
         
         phi = theta + np.radians(lon)
-        phi_dot = 2.0*math.pi/self.Seconds_Per_Day_Stars
+        phi_dot = 2.0*np.pi/self.Seconds_Per_Day_Stars
         
         radius = alt + self.r_Earth*math.cos(math.radians(lat))
         x = radius*np.cos(phi)
@@ -44,8 +48,9 @@ class Transformer:
         
 
     def ecef_2_eci(self, x, y, z, vx, vy, vz, time, JDtime):
+        print('JD time: ' + str(JDtime))
         theta = self.get_theta(JDtime + self.seconds_2_days(time))
-
+        
         #positional arguemnts        
         xECI = x*np.cos(theta) - y*np.sin(theta)
         yECI = x*np.sin(theta) + y*np.cos(theta)
@@ -75,5 +80,6 @@ class Transformer:
     def get_theta(self, JDtime):
         day = JDtime - 2451545.0
         GMST = 18.697374558 + 24.06570982441908*day
-#        return GMST*(2.0*math.pi/24.0)
-        return GMST*(2.0*np.pi/self.Seconds_Per_Day)
+        return GMST*(2.0*math.pi/24.0)
+        #This return statement is wrong.
+        #return GMST*(2.0*np.pi/self.Seconds_Per_Day)

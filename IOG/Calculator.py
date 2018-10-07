@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from Transformer import *
 from bisect import bisect_left
 import time as sleeper
-
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class Calculator:
@@ -27,7 +27,7 @@ class Calculator:
         self.hermiteError = 0.1
         self.timeStepTolerance = 0.01  
         
-        self.plot = False
+        self.plot = True
     
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
@@ -145,8 +145,7 @@ class Calculator:
         times = data[:,0]
         unitConversion = Transformer()
         #dataECI = [unitConversion.ecef_2_eci(l[1],l[2],l[3],l[4],l[5],l[6], l[0], JDtime) for l in data]
-        dataECI = unitConversion.ecef_2_eci(data[:,1], data[:,2], data[:,3], data[:,4], data[:,5], data[:,6],data[:,0], JDtime)        
-        
+        dataECI = unitConversion.ecef_2_eci(data[:,1], data[:,2], data[:,3], data[:,4], data[:,5], data[:,6],times, JDtime)        
         positionECI = unitConversion.construct_site_matrix(position[0], position[1], position[2], times, JDtime)
 
         print("Position Matrix Data: X difference is "+str(positionECI[800][0] - positionECI[0][0]))
@@ -158,7 +157,15 @@ class Calculator:
 
         if(self.plot):
             plt.plot(times, VF)
+            #fig = plt.figure()
+            #ax = fig.add_subplot(111, projection='3d')
+            #ax.plot3D(dataECI[:,0], dataECI[:,1], dataECI[:,2], 'g:')
+            #ax.scatter3D(positionECI[:,0], positionECI[:,1], positionECI[:,2], 'bo')
+            #ax.plot3D(dataECI[:,3], dataECI[:,4], dataECI[:,5])
+            #ax.plot3D(positionECI[:,3], positionECI[:,4], positionECI[:,5], 'g')
+                    
             plt.show()
+            
         
         #indexMinus = 1
         indexMinus = 0

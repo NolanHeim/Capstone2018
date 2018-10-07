@@ -26,7 +26,7 @@ class Mission:
         self.parse_date_time()
         
         #https://en.wikipedia.org/wiki/Julian_day
-        self.RataDieJDtime = 736968 #Days
+        self.RataDieJDtime = 1721424.5 #Days
     
     def parse_date_time(self):
         startTime = self.intervalStart.split()
@@ -83,6 +83,8 @@ class Mission:
         deltaTimeStart = self.startDateTime - datetime.datetime(1, 1, 1)
         deltaTimeEnd = self.endDateTime - datetime.datetime(1, 1, 1)
         #Shifting Factor is: 
+        print('StartDate:' + str(self.startDateTime))
+        print('Days: ' + str(deltaTimeStart.days))
         startJDTime = deltaTimeStart.days + (deltaTimeStart.seconds/(24.0*3600.0)) + self.RataDieJDtime
         endJDTime = deltaTimeEnd.days + (deltaTimeEnd.seconds/(24.0*3600.0)) + self.RataDieJDtime
         
