@@ -75,7 +75,12 @@ class Parser:
             dataArray.append(extraInfo)
             dataArray.append(dataMatrix)
 
-            data = np.array(dataArray)
+            #data = np.memmap(newFile, dtype='float32', mode='w+', shape=(len(dataMatrix),len(dataMatrix[0])))
+            data = np.array(dataMatrix)
+            #data[:] = dataMatrix[:]
+            
+            #del data
+            #data = np.array(dataArray)
             np.save(newFile, data)
             
 
