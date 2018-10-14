@@ -7,79 +7,24 @@
 # Written by Jordan Jones and Nolan Heim
 #
 
-import math
 import numpy as np
 
 class Transformer:
     
     def __init__(self):
-        self.r_Earth = 6378137.0 #m
-        self.Seconds_Per_Day = 86400.0
-        self.Seconds_Per_Day_Stars = 86164.0
-        self.Seconds_Per_Hour = 3600.0
+        self.equitorialRadius = 6378137.0 #m
+        self.polarRadius = 6356752.3 #m
    
-    
-    def geo_2_eci(self, lat, lon, alt, times, JDtime): #theta in radians
-        print('JD time: ' + str(JDtime))
-        print(times)
-        print(self.seconds_2_days(times))
+    def geo_to_ecef(self, lat, lon, alt):
+        a = self.equitorialRadius
+        b = self.polarRadius
+        phi = np.radians(lat)
+        lam = np.radians(lon)
+        N = ((np.power(a,2.0))/
+            (np.sqrt( np.power(a*np.cos(phi),2.0) + np.power(b*np.sin(phi),2.0))) )
         
-        theta = self.get_theta(JDtime + self.seconds_2_days(times)) 
-        print(theta)
-        print("Length of time in Transformer is "+str(len(times)))        
-        print("Length of theta is then "+str(len(theta)))
-        print("Theta difference is "+str(theta[800] - theta[0]))
+        X = (N + alt)*np.cos(phi)*np.cos(lam)
+        Y = (N + alt)*np.cos(phi)*np.sin(lam)
+        Z = (( np.power(b,2.0)/np.power(a,2.0) )*N + alt)*np.sin(phi)
         
-        phi = theta + np.radians(lon)
-        phi_dot = 2.0*np.pi/self.Seconds_Per_Day_Stars
-        
-        radius = alt + self.r_Earth*math.cos(math.radians(lat))
-        x = radius*np.cos(phi)
-        y = radius*np.sin(phi)
-        z = (alt + self.r_Earth)*np.sin(np.radians(lat))*np.ones(theta.shape)
-        
-        print("length of x is "+str(len(x)))        
-        
-        vx = (-1.0)*radius*np.sin(phi)*phi_dot
-        vy = radius*np.cos(phi)*phi_dot
-        vz = np.zeros(theta.shape) #Needs to be same dimension but zero
-
-        return np.column_stack([x, y, z, vx, vy, vz])
-        
-
-    def ecef_2_eci(self, x, y, z, vx, vy, vz, time, JDtime):
-        print('JD time: ' + str(JDtime))
-        theta = self.get_theta(JDtime + self.seconds_2_days(time))
-        
-        #positional arguemnts        
-        xECI = x*np.cos(theta) - y*np.sin(theta)
-        yECI = x*np.sin(theta) + y*np.cos(theta)
-        zECI = z
-        
-        #veclocity arguments
-        vxECI = vx*np.cos(theta) - vy*np.sin(theta)
-        vyECI = vx*np.sin(theta) + vy*np.cos(theta)
-        vzECI = vz
-        
-        np.sin(theta)*((theta[1] - theta[0])/(time[1]- time[0]))
-        
-        
-        return np.column_stack([xECI, yECI, zECI, vxECI, vyECI, vzECI])        
-        
-
-    def construct_site_matrix(self, lat, lon, alt, times, JDtime):        
-        siteMatrix = self.geo_2_eci(lat, lon, alt, times, JDtime)            
-        
-        return siteMatrix
-    
-    
-    def seconds_2_days(self, t_sec):
-        return t_sec / self.Seconds_Per_Day
-    
-    
-    def get_theta(self, JDtime):
-        day = JDtime - 2451545.0
-        GMST = 18.697374558 + 24.06570982441908*day
-        return GMST*(2.0*math.pi/24.0)
-        #This return statement is wrong.
-        #return GMST*(2.0*np.pi/self.Seconds_Per_Day)
+        return np.column_stack([X,Y,Z])

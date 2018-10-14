@@ -11,10 +11,8 @@
 #For numpy.piecewise
 # TODO: Cite all equations from paper & paper itself.
 import numpy as np
-import math
 import matplotlib.pyplot as plt
 from Transformer import *
-from bisect import bisect_left
 import time as sleeper
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -22,45 +20,50 @@ from mpl_toolkits.mplot3d import Axes3D
 class Calculator:
     
     def __init__(self):
-        self.equitorialRadius = 6378137.0 #m
-        self.polarRadius = 6356752.3 #m
-        self.hermiteError = 0.1
+        self.hermiteError = 0.01
         self.timeStepTolerance = 0.05
-        self.Rotational_Speed_Earth = (7.2921159 * np.power(10.0, -5.0))
-        self.plot = False
+        self.plot = True #To display the resulting plots
+        self.verbose = False #To display extra information at each step.
+        self.maxIterations = 100
+        self.initialTimeStep = 120
     
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
-    
     def generate_imaging_opportunities(self, mission, dataMatrices):
         missionCoordinates = mission.get_coordinates()
-        #missionStart = mission.get_interval_start_time()
-        #missionEnd = mission.get_interval_end_time()
-        [mStartJDTime, mEndJDTime] = mission.get_JD_time()
         position = np.array(missionCoordinates[0])
-        print(position)
+        if(self.verbose):        
+            print(position)
+        
         #Check to see if there is only 1 set of satellite data (matrix is only 2D)
         if(len(dataMatrices.shape) > 2):       
             for dataMatrix in dataMatrices:
-                poly = self.cubic_hermite_composite(dataMatrix, position, mStartJDTime)
-                t = [row[0] for row in dataMatrix]
-                y = poly(np.array(times))
-                plt.plot(t, y)
-                plt.show()
-                VF = self.satellite_visibility(dataMatrix, position, mStartJDTime)
-                plt.plot(VF)
-                plt.show()
+                poly = self.cubic_hermite_composite(dataMatrix, position)
+                times = dataMatrix[:,0]
+                y = poly(times)
+                if(self.plot):
+                    plt.plot(times, y)
+                    plt.show()
+
         else:
-            poly = self.cubic_hermite_composite(dataMatrices, position, mStartJDTime)
+            poly = self.cubic_hermite_composite(dataMatrices, position)
             times = dataMatrices[:,0]
-            print(times)
-            y = poly(times)
-            plt.plot(times, y)
-            plt.show()
+            if(self.plot):
+                dataECEF = dataMatrices[:,1:7]
+                unitConversion = Transformer()
+                posECEF = unitConversion.geo_to_ecef(position[0], position[1], position[2])
+                VF = self.satellite_visibility(dataECEF, times, posECEF)                        
+                y = poly(times)
+                plt.plot(times, y)
+                plt.plot(times, VF)
+                plt.show()
+                
+        
             
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         condition = lambda x: (tiMinus <= x) & (x < ti)
-        print([tiMinus,ti])
+        if(self.verbose):        
+            print([tiMinus,ti])
         poly = lambda x: ( (Vi*((3.0*hi*np.power((x - tiMinus),2.0) - 2.0*np.power((x - tiMinus),3.0))/np.power(hi,3.0))) +
                         (ViMinus*(np.power(hi,3.0) - 3.0*hi*np.power((x - tiMinus),2.0) + 2.0*np.power((x - tiMinus),3.0))/np.power(hi,3.0)) +
                         (dVi*(np.power((x - tiMinus),2.0)*(x - ti))/np.power(hi,2.0)) +
@@ -72,7 +75,7 @@ class Calculator:
         a5 = self.compute_a5(hi, ViMinus, Vi, dViMinus, dViHalf, dVi)
         a4 = self.compute_a4(hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti)
         maxDenominator = max([np.abs(5.0*a5*t + a4) for t in [tiMinus, ti]])
-        #print(maxDenominator)
+
         hMax = np.power(((16.0*self.hermiteError)/(maxDenominator)),0.25) 
             
         return hMax
@@ -82,16 +85,11 @@ class Calculator:
         index = (np.abs(dataList - target)).argmin()
         return index
 
-            
-    #Computes the derivative of the visibility function at a given index
-    #TODO Generate a look up table of these (we will be computing these multiple times.)
-    def compute_dV(self, dataECI, positionECI):
-        r_sat = dataECI[:,0:3]        
-        v_sat = dataECI[:,3:6]
+    def compute_dV(self, dataECEF, posECEF):
+        r_sat = dataECEF[:,0:3]        
+        v_sat = dataECEF[:,3:6]
 
-        r_site = positionECI[:,0:3]        
-        v_site = positionECI[:,3:6]        
-        m_v_site = np.sqrt(np.sum(v_site*v_site, axis=1))    
+        r_site = posECEF      
         
         m_r_site = np.sqrt(np.sum(r_site*r_site, axis=1))
         r_unit_site = r_site/m_r_site[:,None]
@@ -99,10 +97,9 @@ class Calculator:
         delta_r = r_sat-r_site        
         m_delta_r = np.sqrt(np.sum(delta_r*delta_r, axis=1))
 
-        d_delta_r = v_sat - v_site
-        v_unit_site = v_site/m_v_site[:,None]   
+        d_delta_r = v_sat
         
-        dV = (np.sum(d_delta_r*r_unit_site, axis=1) + np.sum(delta_r*v_unit_site, axis=1))/m_delta_r
+        dV = (np.sum(d_delta_r*r_unit_site, axis=1))/m_delta_r
      
         term2 = ((np.sum(delta_r*d_delta_r, axis=1)*np.sum(delta_r*r_unit_site, axis=1)))
 
@@ -111,81 +108,62 @@ class Calculator:
         dV -= term2
         
         return dV
-                  
-    #This should combine the instances of each piecewise cubic hermite.
-    def cubic_hermite_composite(self, data, position, JDtime):
-        #This is the master method
-        
+    
+    #This will combine the instances of each piecewise cubic hermite.
+    def cubic_hermite_composite(self, data, position):        
         #Initial Conditions
         times = data[:,0]
+        dataECEF = data[:,1:7]
         unitConversion = Transformer()
-        dataECI = unitConversion.ecef_2_eci(data[:,1], data[:,2], data[:,3], data[:,4], data[:,5], data[:,6],times, JDtime)        
-        positionECI = unitConversion.construct_site_matrix(position[0], position[1], position[2], times, JDtime)
+        posECEF = unitConversion.geo_to_ecef(position[0], position[1], position[2])
 
-        print("Position Matrix Data: X difference is "+str(positionECI[800][0] - positionECI[0][0]))
-        print("They are "+str(positionECI[800][0])+" "+str(positionECI[0][0]))
-        print("Position Matrix Dimensions are "+str(len(positionECI))+" "+str(len(positionECI[0])))
-
-        VF = self.satellite_visibility(dataECI, times, positionECI)
-        dVF = self.compute_dV(dataECI, positionECI)
+        VF = self.satellite_visibility(dataECEF, times, posECEF)
+        dVF = self.compute_dV(dataECEF, posECEF)
         
         if(self.plot):
             plt.plot(times, VF)
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')
-            #ax.plot3D(dataECI[:,0], dataECI[:,1], dataECI[:,2], 'g:')
-            #ax.scatter3D(positionECI[:,0], positionECI[:,1], positionECI[:,2], 'bo')
-            #ax.plot3D(dataECI[:,3], dataECI[:,4], dataECI[:,5])
-            #ax.plot3D(positionECI[:,3], positionECI[:,4], positionECI[:,5], 'g')
+            #ax.plot3D(dataECEF[:,0], dataECEF[:,1], dataECEF[:,2], 'g:') #Position
+            #ax.scatter3D(posECEF[:,0], posECEF[:,1], posECEF[:,2], 'bo') #Position
+            #ax.plot3D(dataECEF[:,3], dataECEF[:,4], dataECEF[:,5]) #Velocity
             plt.show()
 
         indexMinus = 0
         tiMinus = times[indexMinus]
-        hiMinus = 120 #Might have to tweak this parameter
+        hiMinus = self.initialTimeStep #Might have to tweak this parameter
                 
         hi = hiMinus
         index = self.binary_List_Search(times, hiMinus)
         indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))
         
-        print("Minus Half Index: "+str(indexMinus)+" "+str(indexHalf)+" "+str(index))        
+        if(self.verbose):
+            print("MinusIndex, HalfIndex, Index: "+str(indexMinus)+", "+str(indexHalf)+", "+str(index))        
 
         ti = times[index]
-        
-        if(self.plot):
-            endOfTime = True        
-        else:
-            endOfTime = False
     
         polySlices = []
         conditionSlices = []
+        endOfTime= False        
         #Loop through the potential values
         while endOfTime == False:
             #Iterate through the max step (Need to add a maximum iteration reached check)
             k = 1    
             kTolMet = False
-            while k < 100 and kTolMet == False:
-                print(str(indexMinus) + ' ' + str(indexHalf) + ' ' + str(index))
-                #Compute Derivatives
+            while k < self.maxIterations and kTolMet == False:
+                #Compute Visibility Function and Derivatives.
                 ViMinus = VF[indexMinus]
-                ViHalf = VF[indexHalf] #THIS NEEDS TO CHANGE
+                ViHalf = VF[indexHalf]
                 Vi = VF[index]
                 dViMinus = dVF[indexMinus]
                 dViHalf = dVF[indexHalf]
-                dVi = dVF[index]
-                #print([ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi])                
-                
+                dVi = dVF[index]           
                 
                 hi = self.max_time_step(hiMinus, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti)
-                
-                #print('Max TIME')                
-                
-                sleeper.sleep(0.001)
                 expTol = (np.abs(hi - hiMinus))/hiMinus
 
                 if(expTol > self.timeStepTolerance and hi > hiMinus):
                     hiMinus = hi
-                    tiMinus = ti
-                    indexMinus = index
                     index = self.binary_List_Search(times, tiMinus+hi)
                     indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))
                     ti = times[index]
@@ -196,37 +174,41 @@ class Calculator:
                     #Condition is met
                     kTolMet = True
                     
-                print(str(indexMinus) + ' ' + str(indexHalf) + ' ' + str(index))
                 k = k + 1
+                if(self.verbose):
+                    print(str(indexMinus) + ' ' + str(indexHalf) + ' ' + str(index))
+            
                 
-            print('----Done')
             if(ti >= times[-1]):
                 ti = times[-1]
                 endOfTime = True
+            
             [condition, poly] = self.cubic_hermite_poly(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti)
             conditionSlices.append(condition)            
             polySlices.append(poly)            
             
-            print(hi)
+            if(self.verbose):
+                print('hi: ' + str(hi))
+                sleeper.sleep(2)
+            
             hiMinus = hi
             tiMinus = ti
             indexMinus = index            
             index = self.binary_List_Search(times, tiMinus+hi)
+            indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))     
             ti = times[index]
-            indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))            
 
-        
-        #Combine the polySlices and conditionSlices to form the piecewise 
-             #cubic hermite interpolating polynomial
+        #Piecewise cubic hermite interpolating polynomial
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
-        #cubicHermitePoly = np.select(conditionSlices(times), polySlices(times))
-        print(cubicHermitePoly([100,10000]))
-        return cubicHermitePoly
-        
+        #print(cubicHermitePoly([100,10000]))
+        return cubicHermitePoly    
+    
+    
     def compute_a5(self, hi, ViMinus, Vi, dViMinus, dViHalf, dVi):
         a5 = (24.0/(np.power(hi,5.0)))*(ViMinus - Vi) + (4.0/(np.power(hi,4.0)))*(dViMinus + 4.0*dViHalf + dVi)        
         return a5
 
+    
     def compute_a4(self, hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti):
         a4 = ( (4.0/(np.power(hi,4.0)))*(ViMinus + 4.0*ViHalf + Vi) -
                 (4.0/(np.power(hi,4.0)))*(dViMinus*(2.0*tiMinus + 3.0*ti) + 10.0*dViHalf*(tiMinus + ti) + dVi*(3.0*tiMinus + 2.0*ti)) -
@@ -234,86 +216,22 @@ class Calculator:
         return a4
 
         
-    #UNTESTED
-    #Converts the satellite position and time data into sin(theta) vs. seconds  
-    #Assumes data is the satellite data matrix
-    #Assumes position is the site position matrix
     def satellite_visibility(self, dataECI, times, positionECI):  
         r_sat = dataECI[:,0:3]        
-
-        r_site = positionECI[:,0:3]
+        r_site = positionECI
+        
         delta_r = r_sat - r_site
         m_delta_r = np.sqrt(np.sum(delta_r*delta_r, axis=1))
         
-        print("Size of mag of delta r is "+str(len(m_delta_r)))        
-
         m_r_site = np.sqrt(np.sum(r_site*r_site, axis=1))
         r_unit_site = r_site/m_r_site[:,None]
-
-        print("Size of r unit site is "+str(len(r_unit_site)))        
-        print("Size of r unit site [0] is "+str(len(r_unit_site[0])))
-        print(str(r_unit_site[0]))
 
         numerator = np.sum(delta_r*r_unit_site, axis=1)   
         
         VF = numerator/m_delta_r        
         return VF
-    
-    
-    
-    
-    #WILL LIKELY BE DEPRECIATED AS ECEF IS NOT THE WORKING COORDINATE SYSTEM
-    #Converts geodetic coordinates to ECEF
-    def geodetic_to_ECEF(self, Lat, Long, height):
-        a = self.equitorialRadius
-        b = self.polarRadius
-        phi = math.radians(Lat)
-        lam = math.radians(Long)
-        N = (a**2)/(math.sqrt( ((a**2)*(math.cos(phi)**2)) + ((b**2)*(math.sin(phi)**2)) ))
-        X = (N + height)*math.cos(phi)*math.cos(lam)
-        Y = (N + height)*math.cos(phi)*math.sin(lam)
-        Z = (((b**2)/(a**2))*N + height)*math.sin(phi)
-        
-        return [X,Y,Z]
-            
-            
-    def get_visibility_cone(self, Lat, Long, dataECI, times, positionECI, theta0):   
-        Lat = np.radians(Lat)
-        Long = np.radians(Long)        
 
-        r_sat = dataECI[:,0:3]
-        v_sat = dataECI[:,3:6]
-        
-        r_site = positionECI[:,0:3]
-        m_r_site = np.sqrt(np.sum(r_site*r_site, axis=1))
-        
-        p = np.cross(r_sat, v_sat)
-        m_q = m_r_site.max()
-        m_p = np.sqrt(np.sum(p*p, axis=1))
-        p_tilde = p/m_p[:,None]
 
-        gamma = theta0 + np.arcsin((m_r_site*np.sin((np.pi/2.0) + theta0))/(m_q))
-        
-        outOfTimeWindow = False
-        maxTime = times.max()
-        tInOutArray = []
-        m = 0
-        
-        #I don't understand this.
-        while(outOfTimeWindow == False):
-            tInOut = ((1/self.Rotational_Speed_Earth)*(np.arcsin((np.cos(gamma) - 
-                    p_tilde[:,2]*np.sin(Lat))/(np.sqrt(p_tilde[:,0]*p_tilde[:,0] + 
-                    p_tilde[:,1]*p_tilde[:,1])*np.cos(Lat))) - Long - 
-                    np.arctan(p_tilde[:,0]/p_tilde[:,1]) + 2*np.pi*m))
-            #if(tInOut.max() > maxTime):
-            #    outOfTimeWindow = True
-            #else:
-            tInOutArray.append(tInOut)
-            outOfTimeWindow = True
-            #    m = m + 1
-        
-        return np.array(tInOutArray)
-        
     def piecewise(self, x, conditions, functions):
         conditions = np.asarray(conditions)
         functions = np.asarray(functions)
