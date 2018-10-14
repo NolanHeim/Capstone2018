@@ -84,7 +84,7 @@ class MissionCreator:
 #            dataMatrices.append(np.load(self.parsed_datapath+filename))
             #dataMatrices = (np.load(self.parsed_datapath+filename))
             
-        return dataMatrices
+        return np.array(dataMatrices)
     
     
 #main code goes here
