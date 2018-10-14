@@ -2,16 +2,24 @@
 #
 # Parser.py
 #
-# Parses "ephemeris" (.e) files with satellite data.
-# Assumes the files have "EphemerisTimePosVel" before the satellite orbital data
+# Parser has two main functions:
+#
+# 1. Parses "ephemeris" (.e) files with satellite data. This occurs when this file is run
+#  standalone. Saves a numpy array in the 
+#  Assumes the files have "EphemerisTimePosVel" before the satellite orbital data
 #   and "END Ephemeris" at the end of the satellite data.
-# Assumes data is in the format:
+#  Assumes data is in the format:
 #   Time (s), X (m), Y(m), Z(m), Vx(m), Vy(m), Vz(m)
 #   Where X, Y, and Z are the positions and Vx, Vy and Vz are velocities.
 #
+# 2. Parses mission files (.txt) stored in the directory specified by missionpath. 
+#  Creates corresponding mission objects that are returned as a list. This functionality
+#  is not ran when the code is run standalone. The function to do this gets called within
+#  the Mission Creator class.
+# 
 # Inputs:
-#   path: The relative location of the satellite data. (ex: ../../Data)
-#   file: The file name. (ex: 'RCM1_Reference_Orbit.e')
+#   datapath: The relative location of the satellite data. (ex: ../../Data/)
+#   missionpath: The relative location of all satellite mission files (ex: ../../Missions/)
 #
 # Initial Creation Date: 09/26/2018
 #
@@ -25,11 +33,6 @@ from Mission import *
 phase1 = True
 ###
 
-###
-# Example Call:
-#X = Parser('../../Data')
-#X.parse_data('RCM1_Reference_Orbit.e')
-###
 
 class Parser:
     
@@ -75,15 +78,14 @@ class Parser:
             dataArray.append(extraInfo)
             dataArray.append(dataMatrix)
 
-            #data = np.memmap(newFile, dtype='float32', mode='w+', shape=(len(dataMatrix),len(dataMatrix[0])))
             data = np.array(dataMatrix)
-            #data[:] = dataMatrix[:]
             
-            #del data
-            #data = np.array(dataArray)
             np.save(newFile, data)
             
 
+    # Parses mission files stored as .txt files in folder specified by missionpath.
+    # Note that to work correctly, mission files must be compliant with the guidelines outlined
+    # in the Mission Specifications. 
     def create_missions(self):
         missions = []        
         
@@ -110,6 +112,9 @@ class Parser:
         return missions
         
         
+    # Returns the coordinates of the mission as an ordered pair representing [NS, EW] coordinates. For 
+    # phase 1, only one coordinate pair is returned (the target is a point). For phase 2, this will return
+    # four coordinates which will form a target window.
     def get_mission_coordinates(self, fileLines, index):
         #first, get the coordinates in string format
         
@@ -141,6 +146,7 @@ class Parser:
         return coordinates
 
 
+    # Gets any param other than coordinates, eg name, date, etc. 
     def get_simple_param(self, fileLines, param):
         line = ''
 
@@ -157,7 +163,7 @@ class Parser:
             return 'ERROR'
 
 
-#Test code
+# Code that runs the parser as standalone. This just parses and stores satellite data. 
 parser = Parser('../../Data/', '../../Missions/')
 parser.parse_data('../../Parsed Data/')
 

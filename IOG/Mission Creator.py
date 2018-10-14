@@ -24,65 +24,52 @@ class MissionCreator:
         self.datapath = datapath
         self.missionpath = missionpath
         self.parsed_datapath = parsed_datapath
-        #initialize dependent objects
+
         self.system_setup(datapath, missionpath) 
         
-        #parser already contains missionpath
         missions = self.parser.create_missions()
-        #dataMatricesWithExtraInfo = np.array(self.load_data_matrices())
-        
-        #dataMatrix = []
-        #Extract the top vector of each data matrix.
-        #for dataline in dataMatricesWithExtraInfo[:,0]:
-        #    dataMatrix.append(dataline)
-        
-        dataMatrices = self.load_data_matrices()
 
-        #Delete the extra top vector from the data matrices
-        # TODO Might need to be modified for multiple files.
-        #dataMatrices = np.array(dataMatricesWithExtraInfo[0,1])
+        dataMatrices = self.load_data_matrices()
         
         #Data Loading Test Code
         #print(len(dataMatrices))
         #print(len(dataMatrices[0]))
         #print(len(dataMatrices[0][0]))
-        
-        #print("STOP")        
-        
+                
         for mission in missions:        
            self.generate_imaging_opportunities(mission, dataMatrices) #main functions
         
         #Mission test code        
-        print(str(len(missions)))
-        print(missions[0].get_name())
-        print(missions[0].get_coordinates())
-        print(missions[0].get_interval_start_time())
+        #print(str(len(missions)))
+        #print(missions[0].get_name())
+        #print(missions[0].get_coordinates())
+        #print(missions[0].get_interval_start_time())
+
     
-    #initializes blocks of one hierarchy level lower that this one   
+    # Initializes blocks of one hierarchy level lower that this one.
+    # At the moment, the Constellation is unused.
     def system_setup(self, datapath, misionpath):
         self.parser = Parser(self.datapath, self.missionpath)
         self.constellation = Constellation()
         self.calculator = Calculator()
     
-    
+
+    # Starts the calculator's processes to generate results    
     def generate_imaging_opportunities(self, mission, dataMatrices):
         self.calculator.generate_imaging_opportunities(mission, dataMatrices)
 
-    
+
+    # Creates a memmap to read parsed satellite data. Note that this function assumes the parser
+    # has already been ran by itself.
+    # This process will eventually be moved to the Satellite/Constellation classes 
     def load_data_matrices(self):
         dataMatrices = []
-        #self.parser.parse_data(self.parsed_datapath)
-        #print("MC PDP is "+self.parsed_datapath)
+
         for filename in os.listdir(self.parsed_datapath):
-            #dataMatrices.append(self.load(self.parsed_datapath+filename))
-            
-            #read_map = np.memmap(filename, dtype='float32', mode='w+', shape=)
+
             matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
 
             dataMatrices.append(matrix)
-
-#            dataMatrices.append(np.load(self.parsed_datapath+filename))
-            #dataMatrices = (np.load(self.parsed_datapath+filename))
             
         return np.array(dataMatrices)
     

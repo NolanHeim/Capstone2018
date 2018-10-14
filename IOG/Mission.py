@@ -21,13 +21,12 @@ class Mission:
         self.illumThresh = illumThresh
         self.intervalStart = intervalStart
         self.intervalEnd = intervalEnd
+
         #Parse the start and end times here.
         #Save as datetimes.
         self.parse_date_time()
         
-        #https://en.wikipedia.org/wiki/Julian_day
-        self.RataDieJDtime = 1721424.5 #Days
-    
+
     def parse_date_time(self):
         startTime = self.intervalStart.split()
         startTime[1] = startTime[1].replace("GMT", "")
@@ -48,7 +47,7 @@ class Mission:
         self.endDateTime = datetime.datetime(end_mmddyyyy[2], end_mmddyyyy[0], end_mmddyyyy[1], 
                                                end_hhmmss[0], end_hhmmss[1], end_hhmmss[2])
         
-        
+
     def get_name(self):
         return self.name
     
@@ -76,16 +75,3 @@ class Mission:
     
     def get_interval_end_time(self):
         return self.intervalEnd
-
-    #Returns the JD time from the start and end of the time window
-    def get_JD_time(self):
-        ### ASSUMPTION: start/end dates not before 1 January 0001 on the Georgian Calendar
-        deltaTimeStart = self.startDateTime - datetime.datetime(1, 1, 1)
-        deltaTimeEnd = self.endDateTime - datetime.datetime(1, 1, 1)
-        #Shifting Factor is: 
-        print('StartDate:' + str(self.startDateTime))
-        print('Days: ' + str(deltaTimeStart.days))
-        startJDTime = deltaTimeStart.days + (deltaTimeStart.seconds/(24.0*3600.0)) + self.RataDieJDtime
-        endJDTime = deltaTimeEnd.days + (deltaTimeEnd.seconds/(24.0*3600.0)) + self.RataDieJDtime
-        
-        return [startJDTime, endJDTime]

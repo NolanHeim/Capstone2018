@@ -12,7 +12,6 @@
 # TODO: Cite all equations from paper & paper itself.
 import numpy as np
 import matplotlib.pyplot as plt
-from Transformer import *
 import time as sleeper
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -26,6 +25,8 @@ class Calculator:
         self.verbose = False #To display extra information at each step.
         self.maxIterations = 100
         self.initialTimeStep = 120
+        self.equitorialRadius = 6378137.0 #m
+        self.polarRadius = 6356752.3 #m
     
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
@@ -50,8 +51,7 @@ class Calculator:
             times = dataMatrices[:,0]
             if(self.plot):
                 dataECEF = dataMatrices[:,1:7]
-                unitConversion = Transformer()
-                posECEF = unitConversion.geo_to_ecef(position[0], position[1], position[2])
+                posECEF = self.geo_to_ecef(position[0], position[1], position[2])
                 VF = self.satellite_visibility(dataECEF, times, posECEF)                        
                 y = poly(times)
                 plt.plot(times, y)
@@ -114,8 +114,7 @@ class Calculator:
         #Initial Conditions
         times = data[:,0]
         dataECEF = data[:,1:7]
-        unitConversion = Transformer()
-        posECEF = unitConversion.geo_to_ecef(position[0], position[1], position[2])
+        posECEF = self.geo_to_ecef(position[0], position[1], position[2])
 
         VF = self.satellite_visibility(dataECEF, times, posECEF)
         dVF = self.compute_dV(dataECEF, posECEF)
@@ -246,5 +245,18 @@ class Calculator:
         evalFcn.append(functions[yf][0](x[-1]))
         
         return np.array(evalFcn)
+
+
+    def geo_to_ecef(self, lat, lon, alt):
+        a = self.equitorialRadius
+        b = self.polarRadius
+        phi = np.radians(lat)
+        lam = np.radians(lon)
+        N = ((np.power(a,2.0))/
+            (np.sqrt( np.power(a*np.cos(phi),2.0) + np.power(b*np.sin(phi),2.0))) )
         
+        X = (N + alt)*np.cos(phi)*np.cos(lam)
+        Y = (N + alt)*np.cos(phi)*np.sin(lam)
+        Z = (( np.power(b,2.0)/np.power(a,2.0) )*N + alt)*np.sin(phi)
         
+        return np.column_stack([X,Y,Z])
