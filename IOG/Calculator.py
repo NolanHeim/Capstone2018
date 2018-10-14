@@ -39,7 +39,7 @@ class Calculator:
         #Check to see if there is only 1 set of satellite data (matrix is only 2D)
         if(len(dataMatrices.shape) > 2):       
             for dataMatrix in dataMatrices:
-                poly = self.cubic_hermite_composite(dataMatrix, position)
+                [poly, timeWindows] = self.cubic_hermite_composite(dataMatrix, position)
                 times = dataMatrix[:,0]
                 y = poly(times)
                 if(self.plot):
@@ -47,15 +47,17 @@ class Calculator:
                     plt.show()
 
         else:
-            poly = self.cubic_hermite_composite(dataMatrices, position)
+            [poly, timeWindows] = self.cubic_hermite_composite(dataMatrices, position)
             times = dataMatrices[:,0]
             if(self.plot):
                 dataECEF = dataMatrices[:,1:7]
                 posECEF = self.geo_to_ecef(position[0], position[1], position[2])
                 VF = self.satellite_visibility(dataECEF, times, posECEF)                        
                 y = poly(times)
-                plt.plot(times, y)
-                plt.plot(times, VF)
+                fig1, ax1 = plt.subplots()
+                ax1.plot(times, y)
+                ax1.plot(times, VF)
+                print(timeWindows)
                 plt.show()
                 
         
@@ -68,8 +70,42 @@ class Calculator:
                         (ViMinus*(np.power(hi,3.0) - 3.0*hi*np.power((x - tiMinus),2.0) + 2.0*np.power((x - tiMinus),3.0))/np.power(hi,3.0)) +
                         (dVi*(np.power((x - tiMinus),2.0)*(x - ti))/np.power(hi,2.0)) +
                         (dViMinus*((x - tiMinus)*np.power((x - ti),2.0))/np.power(hi,2.0)) )
-        return [condition, poly]
+        
+        roots = self.compute_cubic_roots(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti, condition)
+        return [condition, poly, roots]
     
+    def compute_cubic_roots(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti, domain):
+        #Third Order Coefficient
+        t3 = (1.0/np.power(hi, 3.0))*(-2.0*Vi + 2.0*ViMinus + dVi + dViMinus)
+        
+        t2 = (1.0/np.power(hi, 3.0))*( (3.0*hi + 6.0*tiMinus)*Vi 
+                                    - (3.0*hi + 6.0*tiMinus)*ViMinus 
+                                    - (hi*(ti + 2.0*tiMinus))*dVi
+                                    - (hi*(2.0*ti + tiMinus))*dViMinus )
+        
+        t1 = (1.0/np.power(hi, 3.0))*( -1.0*(6.0*hi*tiMinus + 6.0*np.power(tiMinus, 2.0))*Vi 
+                                    + (6.0*hi*tiMinus + 6.0*np.power(tiMinus, 2.0))*ViMinus 
+                                    + hi*tiMinus*(2.0*ti + tiMinus)*dVi
+                                    + hi*ti*(ti + 2.0*tiMinus)*dViMinus )
+        
+        t0 = (1.0/np.power(hi, 3.0))*( (3.0*hi*np.power(tiMinus, 2.0) + 2.0*np.power(tiMinus, 3.0))*Vi
+                + (np.power(hi, 3.0) - 3.0*hi*np.power(tiMinus, 2.0) - 2.0*np.power(tiMinus, 3.0))*ViMinus
+                - hi*ti*np.power(tiMinus, 2.0)*dVi
+                - hi*tiMinus*np.power(ti, 2.0)*dViMinus )
+        
+        coefficients = np.array([t3,t2,t1,t0])
+        complexRoots = np.roots(coefficients)
+        #Take only real roots
+        realRoots = np.isreal(complexRoots)
+        roots = np.real(complexRoots[realRoots])
+        print([tiMinus, roots, ti])
+        
+        inDomain = domain(roots)
+        print(inDomain)
+        sleeper.sleep(0.2)
+        validRoots = roots[inDomain]
+        
+        return validRoots
     
     def max_time_step(self, hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti):
         a5 = self.compute_a5(hi, ViMinus, Vi, dViMinus, dViHalf, dVi)
@@ -143,6 +179,7 @@ class Calculator:
     
         polySlices = []
         conditionSlices = []
+        rootSlices = []
         endOfTime= False        
         #Loop through the potential values
         while endOfTime == False:
@@ -182,9 +219,10 @@ class Calculator:
                 ti = times[-1]
                 endOfTime = True
             
-            [condition, poly] = self.cubic_hermite_poly(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti)
+            [condition, poly, roots] = self.cubic_hermite_poly(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti)
             conditionSlices.append(condition)            
             polySlices.append(poly)            
+            rootSlices.append(roots)
             
             if(self.verbose):
                 print('hi: ' + str(hi))
@@ -198,9 +236,59 @@ class Calculator:
             ti = times[index]
 
         #Piecewise cubic hermite interpolating polynomial
+        timeWindows = self.create_time_windows(rootSlices, times, VF)
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
-        return cubicHermitePoly    
+        return [cubicHermitePoly, timeWindows]    
+    
+    def create_time_windows(self, roots, times, VF):
+        
+        rootsList = []        
+        #Process the roots list
+        for interval in roots:
+            for root in interval:
+                rootsList.append(root)
+        
+        rootsList = np.array(rootsList)
+        print(rootsList)
+        timingWindow = []
+        startIndex = 0
+        
+        if(VF[0] > 0):
+            timingWindow = [0, rootsList[0]]
+            startIndex = 1
+        elif(VF[0] < 0):
+            timingWindow = [rootsList[0], rootsList[1]]
+            startIndex = 2
+        else:            
+            #It is zero at t = 0, check if star/end of window
+            if(rootsList[0] == 0.0):
+                indexHalf = self.binary_List_Search(times, rootsList[1]/2.0)
+                endrootIndex = 1
+            else:
+                indexHalf = self.binary_List_Search(times, rootsList[0]/2.0)
+                endrootIndex = 0
+            
+            if(VF[indexHalf] > 0):
+                timingWindow = [0, rootsList[endrootIndex]]
+                startIndex = endrootIndex+1
+            else:
+                timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
+                startIndex = endrootIndex+2
+        
+        
+            
+        endIndex = len(rootsList)+1
+        for index in range(startIndex, endIndex, 2):
+            timingWindow.append([rootsList[index], rootsList[index+1]])
+        
+        #Check to see if the roots form a closed set.
+        
+        if(range(startIndex, endIndex)[-1] == (endIndex-2)):          
+            if(rootsList[-1] != times[-1]):
+                timingWindow.append([rootsList[-1], times[-1]])
+            
+        return np.array(timingWindow)
     
     
     def compute_a5(self, hi, ViMinus, Vi, dViMinus, dViHalf, dVi):
