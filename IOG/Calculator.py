@@ -21,12 +21,13 @@ class Calculator:
     def __init__(self):
         self.hermiteError = 0.01
         self.timeStepTolerance = 0.05
-        self.plot = True #To display the resulting plots
+        self.plot = False #To display the resulting plots
         self.verbose = False #To display extra information at each step.
         self.maxIterations = 100
         self.initialTimeStep = 120
         self.equitorialRadius = 6378137.0 #m
         self.polarRadius = 6356752.3 #m
+    
     
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
@@ -61,7 +62,6 @@ class Calculator:
                 plt.show()
                 
         
-            
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         condition = lambda x: (tiMinus <= x) & (x < ti)
         if(self.verbose):        
@@ -295,7 +295,10 @@ class Calculator:
         if(range(startIndex, endIndex)[-1] == (endIndex-2)):          
             if(rootsList[-1] != times[-1]):
                 timingWindow.append([rootsList[-1], times[-1]])
-            
+        
+        if(self.verbose):
+            print(timingWindow)
+        
         return np.array(timingWindow)
     
     
