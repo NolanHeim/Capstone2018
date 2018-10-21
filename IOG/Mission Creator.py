@@ -30,8 +30,8 @@ class MissionCreator:
         self.system_setup(datapath, missionpath) 
         
         missions = self.parser.create_missions()
-
         dataMatrices = self.load_data_matrices()
+        extraInfoMatrix = self.load_extra_info()
         
         #Data Loading Test Code
         #print(len(dataMatrices))
@@ -39,7 +39,7 @@ class MissionCreator:
         #print(len(dataMatrices[0][0]))
         
         for mission in missions:        
-           self.generate_imaging_opportunities(mission, dataMatrices) #main functions
+           self.generate_imaging_opportunities(mission, dataMatrices, extraInfoMatrix) #main functions
         t1 = time.time()
         deltaT = t1-t0
         print('Total Time: ' + str(deltaT))
@@ -59,8 +59,8 @@ class MissionCreator:
     
 
     # Starts the calculator's processes to generate results    
-    def generate_imaging_opportunities(self, mission, dataMatrices):
-        self.calculator.generate_imaging_opportunities(mission, dataMatrices)
+    def generate_imaging_opportunities(self, mission, dataMatrices, extraInfoMatrix):
+        self.calculator.generate_imaging_opportunities(mission, dataMatrices, extraInfoMatrix)
 
 
     # Creates a memmap to read parsed satellite data. Note that this function assumes the parser
@@ -71,16 +71,28 @@ class MissionCreator:
 
         for filename in os.listdir(self.parsed_datapath):
 
-            matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
-
-            dataMatrices.append(matrix)
+            if(filename[0] == 'p'):
+                matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
+                dataMatrices.append(matrix)
             
         return np.array(dataMatrices)
-    
+        
+        
+    def load_extra_info(self):
+        ei_Matrices = []
+
+        for filename in os.listdir(self.parsed_datapath):
+
+            if(filename[0] == 'e'):
+                matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
+                ei_Matrices.append(matrix)
+            
+        return np.array(ei_Matrices)    
     
 #main code goes here
 #we will eventually define a main function so that the program can run as an executable
 
 #The two parameters are the filepaths for the satellite data and the mission info data, respectively
-missionCreator = MissionCreator("../../Data/", "../../Missions/", "../../Parsed Data/")
+if __name__ == "__main__":
+    missionCreator = MissionCreator("../../Data/", "../../Missions/Alpha Test/", "../../Parsed Data/")
 

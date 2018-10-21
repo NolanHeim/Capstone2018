@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time as sleeper
 from mpl_toolkits.mplot3d import Axes3D
+import datetime
 
 
 class Calculator:
@@ -28,21 +29,25 @@ class Calculator:
         self.equitorialRadius = 6378137.0 #m
         self.polarRadius = 6356752.3 #m
         self.Rotational_Speed_Earth = (7.2921159 * np.power(10.0, -5.0))
+        self.RataDieJDtime = 1721424.5 #Days
+        self.epoch_index = 0
     
     
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
-    def generate_imaging_opportunities(self, mission, dataMatrices):
+    def generate_imaging_opportunities(self, mission, dataMatrices, extraInfoMatrix):
         missionCoordinates = mission.get_coordinates()
         position = np.array(missionCoordinates[0])
         if(self.verbose):        
             print(position)
         
-        for dataMatrix in dataMatrices:
-            poly = self.cubic_hermite_composite(dataMatrix, position)
-            times = dataMatrix[:,0]
+        for i in range(0, len(dataMatrices)):
+            epoch = self.calc_epoch(extraInfoMatrix[i][self.epoch_index])
+            
+            poly = self.cubic_hermite_composite(dataMatrices[i], position, epoch)
+            times = dataMatrices[i][:,0]
             if(self.plot):
-                dataECEF = dataMatrix[:,1:7]
+                dataECEF = dataMatrices[i][:,1:7]
                 posECEF = self.geo_to_ecef(position[0], position[1], position[2])
                 VF = self.satellite_visibility(dataECEF, times, posECEF)                        
                 y = poly(times[0:1440])
@@ -147,7 +152,7 @@ class Calculator:
     
     
     #This will combine the instances of each piecewise cubic hermite.
-    def cubic_hermite_composite(self, data, position):        
+    def cubic_hermite_composite(self, data, position, epoch):        
         #Initial Conditions
         times = data[:,0]
         dataECEF = data[:,1:7]
@@ -241,14 +246,15 @@ class Calculator:
         print(len(polySlices))
        
         #Piecewise cubic hermite interpolating polynomial
-        timeWindows = self.create_time_windows(rootSlices, times, VF)
+        timeWindows = self.create_time_windows(rootSlices, times, VF, epoch)
         print(timeWindows)
+        
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
         return cubicHermitePoly    
     
     
-    def create_time_windows(self, roots, times, VF):
+    def create_time_windows(self, roots, times, VF, epoch):
         
         rootsList = []        
         #Process the roots list
@@ -262,11 +268,15 @@ class Calculator:
         timingWindow = []
         startIndex = 0
         
+        rootsListUTC = self.seconds_2_utc(epoch, rootsList)        
+        
         if(VF[0] > 0):  #then we are already in visibility range, so t0 to the first root is an interval
-            timingWindow.append([0, rootsList[0]])
+            #timingWindow.append([0, rootsList[0]])
+            timingWindow.append([epoch, rootsListUTC[0]])
             startIndex = 1
         elif(VF[0] < 0):  #then we are not in visibility range, so the first root will be the start of an interval
-            timingWindow.append([rootsList[0], rootsList[1]])
+            #timingWindow.append([rootsList[0], rootsList[1]])
+            timingWindow.append([rootsListUTC[0], rootsListUTC[1]])
             startIndex = 2
         else:            
             #It is zero at t = 0, check if star/end of window
@@ -278,22 +288,24 @@ class Calculator:
                 endrootIndex = 0
             
             if(VF[indexHalf] > 0):
-                timingWindow = [0, rootsList[endrootIndex]]
+                #timingWindow = [0, rootsList[endrootIndex]]
+                timingWindow = [epoch, rootsListUTC[endrootIndex]]
                 startIndex = endrootIndex+1
             else:
-                timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
+#                timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
+                timingWindow = [rootsListUTC[endrootIndex], rootsListUTC[endrootIndex+1]]
                 startIndex = endrootIndex+2
         
 #        endIndex = len(rootsList)+1
-        endIndex = len(rootsList)
+        endIndex = len(rootsListUTC)
         for index in range(startIndex, endIndex, 2):
-            timingWindow.append([rootsList[index], rootsList[index+1]])
+            timingWindow.append([rootsListUTC[index], rootsListUTC[index+1]])
         
         #Check to see if the roots form a closed set.
         
         if(range(startIndex, endIndex)[-1] == (endIndex-2)):          
             if(rootsList[-1] != times[-1]):
-                timingWindow.append([rootsList[-1], times[-1]])
+                timingWindow.append([rootsListUTC[-1], self.one_time_to_utc(epoch, times[-1])])
         
         if(self.verbose):
             print(timingWindow)
@@ -383,3 +395,26 @@ class Calculator:
                 - lon - np.arctan(p_unit[:,0]/p_unit[:,1] + 2*np.pi*m))
         
         return np.array(tInOut)
+        
+    def seconds_2_utc(self, epoch, times):
+        utc_times=[]
+        
+        for i in range(0,len(times)):
+            deltat = datetime.timedelta(seconds=times[i])
+            utc_times.append(epoch + deltat)
+        
+        return utc_times
+        
+        
+    def one_time_to_utc(self, epoch, time):
+        deltat = datetime.timedelta(seconds=time)
+        
+        return epoch + deltat
+        
+        
+    def calc_epoch(self, jdate):
+        days = jdate - self.RataDieJDtime - 1
+        setup_delta = datetime.timedelta(days=days)
+        epoch = datetime.datetime(1,1,1) + setup_delta
+        
+        return epoch

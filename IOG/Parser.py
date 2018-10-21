@@ -56,8 +56,10 @@ class Parser:
         self.p_intervalStart = 4
         self.p_intervalEnd = 5
         
-        self.INDEX_OF_COORDINATES = 3   
+        self.jDate_offset = 3
         
+        self.INDEX_OF_COORDINATES = 3   
+    
    
     def parse_data(self, parsed_datapath):
         for filename in os.listdir(self.datapath): 
@@ -67,20 +69,28 @@ class Parser:
             fileLines[:] = [x for x in fileLines if x != '']
             fileObj.close()
         
+            JDateIndex = fileLines.index('BEGIN Ephemeris') + self.jDate_offset
+            JDLine = fileLines[JDateIndex].split()
+            jDate = float(JDLine[-1])
+        
             dataStartIndex = fileLines.index('EphemerisTimePosVel') + 1
             dataStopIndex = fileLines.index('END Ephemeris') - 1
             dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
             
             newFile = os.path.join(parsed_datapath, 'parsed_'+filename[0:-2])
+            extraInfoFile = os.path.join(parsed_datapath, 'ex_parsed_'+filename[0:-2])
             
-            dataArray = []
-            extraInfo = [0, 0, 0, 0, 0, 0, 0]
-            dataArray.append(extraInfo)
-            dataArray.append(dataMatrix)
+            extraInfo = [jDate, 0, 0, 0, 0, 0, 0]            
+            
+            #dataArray = []
+            #dataArray.append(extraInfo)
+            #dataArray.append(dataMatrix)
 
             data = np.array(dataMatrix)
-            
             np.save(newFile, data)
+            
+            extra = np.array(extraInfo)
+            np.save(extraInfoFile, extra)
             
 
     # Parses mission files stored as .txt files in folder specified by missionpath.
@@ -164,6 +174,7 @@ class Parser:
 
 
 # Code that runs the parser as standalone. This just parses and stores satellite data. 
-parser = Parser('../../Data/', '../../Missions/')
-parser.parse_data('../../Parsed Data/')
+if __name__ == "__main__":
+    parser = Parser('../../Data/', '../../Missions/Alpha Test/')
+    parser.parse_data('../../Parsed Data/')
 
