@@ -21,12 +21,13 @@ class Calculator:
     def __init__(self):
         self.hermiteError = 0.0001
         self.timeStepTolerance = 0.05
-        self.plot = True #To display the resulting plots
+        self.plot = False #To display the resulting plots
         self.verbose = False #To display extra information at each step.
         self.maxIterations = 100
         self.initialTimeStep = 120
         self.equitorialRadius = 6378137.0 #m
         self.polarRadius = 6356752.3 #m
+    
     
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
@@ -54,7 +55,6 @@ class Calculator:
                 plt.legend()
                 plt.show()
         
-            
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         condition = lambda x: (tiMinus <= x) & (x < ti)
         if(self.verbose):        
@@ -67,9 +67,10 @@ class Calculator:
         roots = self.compute_cubic_roots(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti, condition)
         return [condition, poly, roots]
     
+    
     def compute_cubic_roots(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti, domain):
         #Third Order Coefficient
-        t3 = (1.0/np.power(hi, 3.0))*(-2.0*Vi + 2.0*ViMinus + dVi + dViMinus)
+        t3 = (1.0/np.power(hi, 3.0))*(-2.0*Vi + 2.0*ViMinus + hi*dVi + hi*dViMinus)
         
         t2 = (1.0/np.power(hi, 3.0))*( (3.0*hi + 6.0*tiMinus)*Vi 
                                     - (3.0*hi + 6.0*tiMinus)*ViMinus 
@@ -91,14 +92,18 @@ class Calculator:
         #Take only real roots
         realRoots = np.isreal(complexRoots)
         roots = np.real(complexRoots[realRoots])
-        #print([tiMinus, roots, ti])
         
         inDomain = domain(roots)
-        #print(inDomain)
-        #sleeper.sleep(0.2)
+        
+        if(self.verbose):        
+            print([tiMinus, roots, ti])                
+            print(inDomain)
+            sleeper.sleep(0.2)
+
         validRoots = roots[inDomain]
         
         return validRoots
+    
     
     def max_time_step(self, hi, ViMinus, ViHalf, Vi, dViMinus, dViHalf, dVi, tiMinus, ti):
         a5 = self.compute_a5(hi, ViMinus, Vi, dViMinus, dViHalf, dVi)
@@ -113,6 +118,7 @@ class Calculator:
     def binary_List_Search(self, dataList, target):
         index = (np.abs(dataList - target)).argmin()
         return index
+
 
     def compute_dV(self, dataECEF, posECEF):
         r_sat = dataECEF[:,0:3]        
@@ -137,6 +143,7 @@ class Calculator:
         dV -= term2
         
         return dV
+    
     
     #This will combine the instances of each piecewise cubic hermite.
     def cubic_hermite_composite(self, data, position):        
@@ -235,6 +242,7 @@ class Calculator:
         #print(cubicHermitePoly([100,10000]))
         return cubicHermitePoly    
     
+    
     def create_time_windows(self, roots, times, VF):
         
         rootsList = []        
@@ -244,15 +252,16 @@ class Calculator:
                 rootsList.append(root)
         
         rootsList = np.array(rootsList)
-        print(rootsList)
+        if(self.verbose):        
+            print(rootsList)
         timingWindow = []
         startIndex = 0
         
-        if(VF[0] > 0):
-            timingWindow = [0, rootsList[0]]
+        if(VF[0] > 0):  #then we are already in visibility range, so t0 to the first root is an interval
+            timingWindow.append([0, rootsList[0]])
             startIndex = 1
-        elif(VF[0] < 0):
-            timingWindow = [rootsList[0], rootsList[1]]
+        elif(VF[0] < 0):  #then we are not in visibility range, so the first root will be the start of an interval
+            timingWindow.append([rootsList[0], rootsList[1]])
             startIndex = 2
         else:            
             #It is zero at t = 0, check if star/end of window
@@ -270,9 +279,8 @@ class Calculator:
                 timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
                 startIndex = endrootIndex+2
         
-        
-            
-        endIndex = len(rootsList)+1
+#        endIndex = len(rootsList)+1
+        endIndex = len(rootsList)
         for index in range(startIndex, endIndex, 2):
             timingWindow.append([rootsList[index], rootsList[index+1]])
         
@@ -281,7 +289,10 @@ class Calculator:
         if(range(startIndex, endIndex)[-1] == (endIndex-2)):          
             if(rootsList[-1] != times[-1]):
                 timingWindow.append([rootsList[-1], times[-1]])
-            
+        
+        if(self.verbose):
+            print(timingWindow)
+        
         return np.array(timingWindow)
     
     
