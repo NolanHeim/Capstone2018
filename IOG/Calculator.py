@@ -19,7 +19,7 @@ from mpl_toolkits.mplot3d import Axes3D
 class Calculator:
     
     def __init__(self):
-        self.hermiteError = 0.01
+        self.hermiteError = 0.0001
         self.timeStepTolerance = 0.05
         self.plot = True #To display the resulting plots
         self.verbose = False #To display extra information at each step.
@@ -36,30 +36,23 @@ class Calculator:
         if(self.verbose):        
             print(position)
         
-        #Check to see if there is only 1 set of satellite data (matrix is only 2D)
-        if(len(dataMatrices.shape) > 2):       
-            for dataMatrix in dataMatrices:
-                [poly, timeWindows] = self.cubic_hermite_composite(dataMatrix, position)
-                times = dataMatrix[:,0]
-                y = poly(times)
-                if(self.plot):
-                    plt.plot(times, y)
-                    plt.show()
-
-        else:
-            [poly, timeWindows] = self.cubic_hermite_composite(dataMatrices, position)
-            times = dataMatrices[:,0]
+        for dataMatrix in dataMatrices:
+            poly = self.cubic_hermite_composite(dataMatrix, position)
+            times = dataMatrix[:,0]
             if(self.plot):
-                dataECEF = dataMatrices[:,1:7]
+                dataECEF = dataMatrix[:,1:7]
                 posECEF = self.geo_to_ecef(position[0], position[1], position[2])
                 VF = self.satellite_visibility(dataECEF, times, posECEF)                        
-                y = poly(times)
+                y = poly(times[0:1440])
+                print(len(times))
                 fig1, ax1 = plt.subplots()
-                ax1.plot(times, y)
-                ax1.plot(times, VF)
-                print(timeWindows)
+                ax1.plot(times[0:1440], VF[0:1440], color="blue", label="Visibility Function", linewidth=5.0)
+                ax1.plot(times[0:1440], y, color="black", linestyle='-', label="Interpolation", linewidth=3.0)            
+                ax1.set_xlabel('Time (s)')
+                ax1.set_ylabel('Visibility Function')
+                ax1.set_title('Interpolation With Error = 0.1')
+                plt.legend()
                 plt.show()
-                
         
             
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
@@ -98,11 +91,11 @@ class Calculator:
         #Take only real roots
         realRoots = np.isreal(complexRoots)
         roots = np.real(complexRoots[realRoots])
-        print([tiMinus, roots, ti])
+        #print([tiMinus, roots, ti])
         
         inDomain = domain(roots)
-        print(inDomain)
-        sleeper.sleep(0.2)
+        #print(inDomain)
+        #sleeper.sleep(0.2)
         validRoots = roots[inDomain]
         
         return validRoots
@@ -155,14 +148,14 @@ class Calculator:
         VF = self.satellite_visibility(dataECEF, times, posECEF)
         dVF = self.compute_dV(dataECEF, posECEF)
         
-        if(self.plot):
-            plt.plot(times, VF)
+        #if(self.plot):
+            #plt.plot(times, VF)
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')
             #ax.plot3D(dataECEF[:,0], dataECEF[:,1], dataECEF[:,2], 'g:') #Position
             #ax.scatter3D(posECEF[:,0], posECEF[:,1], posECEF[:,2], 'bo') #Position
             #ax.plot3D(dataECEF[:,3], dataECEF[:,4], dataECEF[:,5]) #Velocity
-            plt.show()
+            #plt.show()
 
         indexMinus = 0
         tiMinus = times[indexMinus]
@@ -234,12 +227,13 @@ class Calculator:
             index = self.binary_List_Search(times, tiMinus+hi)
             indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))     
             ti = times[index]
-
+        
+        print(len(polySlices))
         #Piecewise cubic hermite interpolating polynomial
-        timeWindows = self.create_time_windows(rootSlices, times, VF)
+        #timeWindows = self.create_time_windows(rootSlices, times, VF)
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
-        return [cubicHermitePoly, timeWindows]    
+        return cubicHermitePoly    
     
     def create_time_windows(self, roots, times, VF):
         

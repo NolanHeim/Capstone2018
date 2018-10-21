@@ -15,12 +15,14 @@ from Constellation import *
 from Calculator import *
 import numpy as np
 
+import time
+
 class MissionCreator:
 
 
     #initialization function for the mission creator class    
     def __init__(self, datapath, missionpath, parsed_datapath):
-
+        t0 = time.time()
         self.datapath = datapath
         self.missionpath = missionpath
         self.parsed_datapath = parsed_datapath
@@ -35,10 +37,12 @@ class MissionCreator:
         #print(len(dataMatrices))
         #print(len(dataMatrices[0]))
         #print(len(dataMatrices[0][0]))
-                
+        
         for mission in missions:        
            self.generate_imaging_opportunities(mission, dataMatrices) #main functions
-        
+        t1 = time.time()
+        deltaT = t1-t0
+        print('Total Time: ' + str(deltaT))
         #Mission test code        
         #print(str(len(missions)))
         #print(missions[0].get_name())
