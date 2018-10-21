@@ -19,7 +19,7 @@ from mpl_toolkits.mplot3d import Axes3D
 class Calculator:
     
     def __init__(self):
-        self.hermiteError = 0.0001
+        self.hermiteError = 0.01
         self.timeStepTolerance = 0.05
         self.plot = False #To display the resulting plots
         self.verbose = False #To display extra information at each step.
@@ -27,6 +27,7 @@ class Calculator:
         self.initialTimeStep = 120
         self.equitorialRadius = 6378137.0 #m
         self.polarRadius = 6356752.3 #m
+        self.Rotational_Speed_Earth = (7.2921159 * np.power(10.0, -5.0))
     
     
     #Returns the cubic Hermite polynomial function on the
@@ -176,7 +177,9 @@ class Calculator:
             print("MinusIndex, HalfIndex, Index: "+str(indexMinus)+", "+str(indexHalf)+", "+str(index))        
 
         ti = times[index]
-    
+
+        test = self.satellite_viewing_cone(dataECEF,posECEF,position)
+        print(test)
         polySlices = []
         conditionSlices = []
         rootSlices = []
@@ -236,8 +239,10 @@ class Calculator:
             ti = times[index]
         
         print(len(polySlices))
+       
         #Piecewise cubic hermite interpolating polynomial
-        #timeWindows = self.create_time_windows(rootSlices, times, VF)
+        timeWindows = self.create_time_windows(rootSlices, times, VF)
+        print(timeWindows)
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
         return cubicHermitePoly    
@@ -353,3 +358,28 @@ class Calculator:
         Z = (( np.power(b,2.0)/np.power(a,2.0) )*N + alt)*np.sin(phi)
         
         return np.column_stack([X,Y,Z])
+        
+    def satellite_viewing_cone(self, dataECEF, posECEF, posGEO):
+        r_sat = dataECEF[:,0:3]  
+        r_site = posECEF
+        v_sat = dataECEF[:,3:6]   
+        lat = np.radians(posGEO[0])
+        lon = posGEO[1]
+        theta = 0 #Not used yet.
+        m = 0
+        
+        m_r_site = np.sqrt(np.sum(r_site*r_site, axis=1))      
+        m_r_sat = np.sqrt(np.sum(r_sat*r_sat, axis=1))    
+        m_q = np.max(m_r_sat)        
+        
+        gamma = theta + np.arcsin( (m_r_site*np.sin((np.pi/2.0)+theta))/(m_q) )
+
+        p = np.cross(r_sat, v_sat)
+        p_m = np.sqrt(np.sum(p*p, axis=1))
+        p_unit = p/p_m[:,None]
+        
+        tInOut = (np.arcsin( (np.cos(gamma) - p_unit[:,2]*np.sin(lat))/
+            (np.sqrt(np.power(p_unit[:,0],2.0) + np.power(p_unit[:,1],2.0))*np.cos(lat)) )
+                - lon - np.arctan(p_unit[:,0]/p_unit[:,1] + 2*np.pi*m))
+        
+        return np.array(tInOut)
