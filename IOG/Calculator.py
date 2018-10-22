@@ -183,8 +183,11 @@ class Calculator:
 
         ti = times[index]
 
-        test = self.satellite_viewing_cone(dataECEF,posECEF,position)
-        print(test)
+    #Related to viewing cone, untested
+        #test = self.satellite_viewing_cone(dataECEF,posECEF,position)
+        #print(test)
+        
+        
         polySlices = []
         conditionSlices = []
         rootSlices = []
@@ -243,11 +246,12 @@ class Calculator:
             indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))     
             ti = times[index]
         
-        print(len(polySlices))
+        if(self.verbose):        
+            print(len(polySlices))
        
         #Piecewise cubic hermite interpolating polynomial
         timeWindows = self.create_time_windows(rootSlices, times, VF, epoch)
-        print(timeWindows)
+        #print(timeWindows)
         
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
