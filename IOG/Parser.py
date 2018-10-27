@@ -28,6 +28,7 @@
 import os
 import numpy as np
 from Mission import *
+import time
 
 ###IMPORTANT - CHANGE THIS WHEN WE MOVE ON FROM PHASE 1###
 phase1 = True
@@ -62,6 +63,7 @@ class Parser:
     
    
     def parse_data(self, parsed_datapath):
+        t0 = time.time()
         for filename in os.listdir(self.datapath): 
             dataFile = os.path.join(self.datapath, filename)
             fileObj = open(dataFile, 'r')
@@ -91,6 +93,8 @@ class Parser:
             
             extra = np.array(extraInfo)
             np.save(extraInfoFile, extra)
+            
+        print("Total time = "+str(time.time() - t0))
             
 
     # Parses mission files stored as .txt files in folder specified by missionpath.

@@ -12,7 +12,7 @@
 # TODO: Cite all equations from paper & paper itself.
 import numpy as np
 import matplotlib.pyplot as plt
-import time as sleeper
+import time
 from mpl_toolkits.mplot3d import Axes3D
 import datetime
 
@@ -36,6 +36,7 @@ class Calculator:
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
     def generate_imaging_opportunities(self, mission, dataMatrices, extraInfoMatrix):
+        #self.t0 = time.time()
         missionCoordinates = mission.get_coordinates()
         position = np.array(missionCoordinates[0])
         
@@ -65,7 +66,8 @@ class Calculator:
             
             trimmedMatrix = dataMatrices[i][start_index:end_index]
             
-            print(trimmedMatrix.shape)
+            if(self.verbose):            
+                print(trimmedMatrix.shape)
 
             poly = self.cubic_hermite_composite(trimmedMatrix, position, epoch)
 
@@ -89,15 +91,21 @@ class Calculator:
 
         
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
+        #t2 = time.time()        
+        
         condition = lambda x: (tiMinus <= x) & (x < ti)
         if(self.verbose):        
             print([tiMinus,ti])
+            
         poly = lambda x: ( (Vi*((3.0*hi*np.power((x - tiMinus),2.0) - 2.0*np.power((x - tiMinus),3.0))/np.power(hi,3.0))) +
                         (ViMinus*(np.power(hi,3.0) - 3.0*hi*np.power((x - tiMinus),2.0) + 2.0*np.power((x - tiMinus),3.0))/np.power(hi,3.0)) +
                         (dVi*(np.power((x - tiMinus),2.0)*(x - ti))/np.power(hi,2.0)) +
                         (dViMinus*((x - tiMinus)*np.power((x - ti),2.0))/np.power(hi,2.0)) )
         
         roots = np.sort(self.compute_cubic_roots(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti, condition))
+
+        #print("Time for interpolation + root finding = "+str(time.time() - t2))
+
         return [condition, poly, roots]
     
     
@@ -131,7 +139,7 @@ class Calculator:
         if(self.verbose):        
             print([tiMinus, roots, ti])                
             print(inDomain)
-            sleeper.sleep(0.2)
+            time.sleep(0.2)
 
         validRoots = roots[inDomain]
         
@@ -180,6 +188,10 @@ class Calculator:
     
     #This will combine the instances of each piecewise cubic hermite.
     def cubic_hermite_composite(self, data, position, epoch):        
+        
+        #self.t1 = time.time()
+        #print("Time for data trimming = "+str(self.t1 - self.t0))        
+        
         #Initial Conditions
         times = data[:,0]
         dataECEF = data[:,1:7]
@@ -213,8 +225,7 @@ class Calculator:
     #Related to viewing cone, untested
         #test = self.satellite_viewing_cone(dataECEF,posECEF,position)
         #print(test)
-        
-        
+                
         polySlices = []
         conditionSlices = []
         rootSlices = []
@@ -252,6 +263,7 @@ class Calculator:
                 if(self.verbose):
                     print(str(indexMinus) + ' ' + str(indexHalf) + ' ' + str(index))
             
+                #print("Time for determining this timestep= "+str(time.time() - self.t1))
                 
             if(ti >= times[-1]):
                 ti = times[-1]
@@ -264,7 +276,7 @@ class Calculator:
             
             if(self.verbose):
                 print('hi: ' + str(hi))
-                sleeper.sleep(2)
+                time.sleep(2)
             
             hiMinus = hi
             tiMinus = ti
@@ -272,6 +284,9 @@ class Calculator:
             index = self.binary_List_Search(times, tiMinus+hi)
             indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))     
             ti = times[index]
+
+            
+
         
         if(self.verbose):        
             print(len(polySlices))
@@ -286,6 +301,8 @@ class Calculator:
     
     
     def create_time_windows(self, roots, times, VF, epoch):
+        #t3 = time.time()        
+        
         
         rootsList = []        
         #Process the roots list
@@ -343,6 +360,8 @@ class Calculator:
         #if(self.verbose):
         #for window in timingWindow:
             #print(window)
+        
+        #print("Time for creating timing windows = "+str(time.time() - t3))        
         
         return np.array(timingWindow)
     
