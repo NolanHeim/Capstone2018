@@ -22,11 +22,13 @@ class MissionCreator:
 
     #initialization function for the mission creator class    
     def __init__(self, datapath, missionpath, parsed_datapath):
+        self.test = False
+
         t0 = time.time()
         self.datapath = datapath
         self.missionpath = missionpath
         self.parsed_datapath = parsed_datapath
-
+        
         self.system_setup(datapath, missionpath) 
         
         missions = self.parser.create_missions()
@@ -34,20 +36,23 @@ class MissionCreator:
         extraInfoMatrix = self.load_extra_info()
         
         #Data Loading Test Code
-        #print(len(dataMatrices))
-        #print(len(dataMatrices[0]))
-        #print(len(dataMatrices[0][0]))
+        if(self.test):
+            print(len(dataMatrices))
+            print(len(dataMatrices[0]))
+            print(len(dataMatrices[0][0]))
         
         for mission in missions:        
            self.generate_imaging_opportunities(mission, dataMatrices, extraInfoMatrix) #main functions
         t1 = time.time()
         deltaT = t1-t0
         print('Total Time: ' + str(deltaT))
-        #Mission test code        
-        #print(str(len(missions)))
-        #print(missions[0].get_name())
-        #print(missions[0].get_coordinates())
-        #print(missions[0].get_interval_start_time())
+        
+        #Mission test code
+        if(self.test):        
+            print(str(len(missions)))
+            print(missions[0].get_name())
+            print(missions[0].get_coordinates())
+            print(missions[0].get_interval_start_time())
 
     
     # Initializes blocks of one hierarchy level lower that this one.

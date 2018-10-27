@@ -70,8 +70,8 @@ class Mission:
         
         
     def get_interval_start_time(self):
-        return self.intervalStart
+        return self.startDateTime
         
     
     def get_interval_end_time(self):
-        return self.intervalEnd
+        return self.endDateTime

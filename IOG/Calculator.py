@@ -38,28 +38,55 @@ class Calculator:
     def generate_imaging_opportunities(self, mission, dataMatrices, extraInfoMatrix):
         missionCoordinates = mission.get_coordinates()
         position = np.array(missionCoordinates[0])
+        
+        mission_interval_start = mission.get_interval_start_time()
+        mission_interval_end = mission.get_interval_end_time()
+                
         if(self.verbose):        
             print(position)
         
         for i in range(0, len(dataMatrices)):
             epoch = self.calc_epoch(extraInfoMatrix[i][self.epoch_index])
+            times = dataMatrices[i][:,0]            
             
-            poly = self.cubic_hermite_composite(dataMatrices[i], position, epoch)
-            times = dataMatrices[i][:,0]
+            data_interval_start = epoch
+            data_interval_end = epoch + datetime.timedelta(seconds=times[-1])
+
+
+            [start_index, end_index] = self.check_time_intersection(mission_interval_start, mission_interval_end, 
+                                        data_interval_start, data_interval_end, times)
+
+            print(mission_interval_start)
+            print(mission_interval_end)
+            print(data_interval_start)
+            print(data_interval_end)            
+            print("Start index: "+str(start_index))
+            print("End index: "+str(end_index))
+            
+            trimmedMatrix = dataMatrices[i][start_index:end_index]
+            
+            print(trimmedMatrix.shape)
+
+            poly = self.cubic_hermite_composite(trimmedMatrix, position, epoch)
+
+            #might want to redfinie times here
+
             if(self.plot):
+                stopPlot = 3*1440
                 dataECEF = dataMatrices[i][:,1:7]
                 posECEF = self.geo_to_ecef(position[0], position[1], position[2])
                 VF = self.satellite_visibility(dataECEF, times, posECEF)                        
-                y = poly(times[0:1440])
+                y = poly(times[0:stopPlot])
                 print(len(times))
                 fig1, ax1 = plt.subplots()
-                ax1.plot(times[0:1440], VF[0:1440], color="blue", label="Visibility Function", linewidth=5.0)
-                ax1.plot(times[0:1440], y, color="black", linestyle='-', label="Interpolation", linewidth=3.0)            
+                ax1.plot(times[0:stopPlot], VF[0:stopPlot], color="blue", label="Visibility Function", linewidth=5.0)
+                ax1.plot(times[0:stopPlot], y, color="black", linestyle='-', label="Interpolation", linewidth=3.0)            
                 ax1.set_xlabel('Time (s)')
                 ax1.set_ylabel('Visibility Function')
                 ax1.set_title('Interpolation With Error = 0.1')
                 plt.legend()
                 plt.show()
+
         
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         condition = lambda x: (tiMinus <= x) & (x < ti)
@@ -70,7 +97,7 @@ class Calculator:
                         (dVi*(np.power((x - tiMinus),2.0)*(x - ti))/np.power(hi,2.0)) +
                         (dViMinus*((x - tiMinus)*np.power((x - ti),2.0))/np.power(hi,2.0)) )
         
-        roots = self.compute_cubic_roots(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti, condition)
+        roots = np.sort(self.compute_cubic_roots(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti, condition))
         return [condition, poly, roots]
     
     
@@ -273,6 +300,7 @@ class Calculator:
         startIndex = 0
         
         rootsListUTC = self.seconds_2_utc(epoch, rootsList)        
+        #rootsListUTC = rootsList        
         
         if(VF[0] > 0):  #then we are already in visibility range, so t0 to the first root is an interval
             #timingWindow.append([0, rootsList[0]])
@@ -296,8 +324,8 @@ class Calculator:
                 timingWindow = [epoch, rootsListUTC[endrootIndex]]
                 startIndex = endrootIndex+1
             else:
-#                timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
-                timingWindow = [rootsListUTC[endrootIndex], rootsListUTC[endrootIndex+1]]
+                timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
+                #timingWindow = [rootsListUTC[endrootIndex], rootsListUTC[endrootIndex+1]]
                 startIndex = endrootIndex+2
         
 #        endIndex = len(rootsList)+1
@@ -310,9 +338,11 @@ class Calculator:
         if(range(startIndex, endIndex)[-1] == (endIndex-2)):          
             if(rootsList[-1] != times[-1]):
                 timingWindow.append([rootsListUTC[-1], self.one_time_to_utc(epoch, times[-1])])
+                #timingWindow.append([rootsListUTC[-1], times[-1]])
         
-        if(self.verbose):
-            print(timingWindow)
+        #if(self.verbose):
+        #for window in timingWindow:
+            #print(window)
         
         return np.array(timingWindow)
     
@@ -422,3 +452,28 @@ class Calculator:
         epoch = datetime.datetime(1,1,1) + setup_delta
         
         return epoch
+        
+    
+    def check_time_intersection(self, m_start, m_end, d_start, d_end, times):
+        if(m_start < d_start):
+            start = d_start
+            start_index = 0     
+        else:
+            start = m_start
+            start_jump = (start - d_start).total_seconds()
+            start_index = self.binary_List_Search(times, start_jump)
+        if(m_end > d_end):
+            end = d_end
+            end_index = -1
+        else:
+            end = m_end
+            end_jump = (d_end - end).total_seconds()
+            end_index = self.binary_List_Search(times, end_jump)
+
+        if(self.verbose):
+            print(start)
+            print(end)
+        
+        return [start_index, end_index]
+        
+        
