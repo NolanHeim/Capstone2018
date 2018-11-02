@@ -20,7 +20,7 @@ import datetime
 class Calculator:
     
     def __init__(self):
-        self.hermiteError = 0.01
+        self.hermiteError = 0.1
         self.timeStepTolerance = 0.05
         self.plot = False #To display the resulting plots
         self.verbose = False #To display extra information at each step.
@@ -57,12 +57,13 @@ class Calculator:
             [start_index, end_index] = self.check_time_intersection(mission_interval_start, mission_interval_end, 
                                         data_interval_start, data_interval_end, times)
 
-            print(mission_interval_start)
-            print(mission_interval_end)
-            print(data_interval_start)
-            print(data_interval_end)            
-            print("Start index: "+str(start_index))
-            print("End index: "+str(end_index))
+            if(self.verbose):
+                print(mission_interval_start)
+                print(mission_interval_end)
+                print(data_interval_start)
+                print(data_interval_end)            
+                print("Start index: "+str(start_index))
+                print("End index: "+str(end_index))
             
             trimmedMatrix = dataMatrices[i][start_index:end_index]
             
@@ -284,16 +285,15 @@ class Calculator:
             index = self.binary_List_Search(times, tiMinus+hi)
             indexHalf = self.binary_List_Search(times, tiMinus+(hi/2.0))     
             ti = times[index]
-
-            
-
         
         if(self.verbose):        
             print(len(polySlices))
        
         #Piecewise cubic hermite interpolating polynomial
         timeWindows = self.create_time_windows(rootSlices, times, VF, epoch)
-        #print(timeWindows)
+
+        if(self.verbose):        
+            print(len(timeWindows))
         
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
@@ -302,7 +302,6 @@ class Calculator:
     
     def create_time_windows(self, roots, times, VF, epoch):
         #t3 = time.time()        
-        
         
         rootsList = []        
         #Process the roots list
@@ -318,6 +317,8 @@ class Calculator:
         
         rootsListUTC = self.seconds_2_utc(epoch, rootsList)        
         #rootsListUTC = rootsList        
+        
+        #print(len(rootsListUTC))        
         
         if(VF[0] > 0):  #then we are already in visibility range, so t0 to the first root is an interval
             #timingWindow.append([0, rootsList[0]])
@@ -346,9 +347,11 @@ class Calculator:
                 startIndex = endrootIndex+2
         
 #        endIndex = len(rootsList)+1
-        endIndex = len(rootsListUTC)
+        endIndex = len(rootsListUTC) - 1
+       
         for index in range(startIndex, endIndex, 2):
             timingWindow.append([rootsListUTC[index], rootsListUTC[index+1]])
+
         
         #Check to see if the roots form a closed set.
         

@@ -99,5 +99,5 @@ class MissionCreator:
 
 #The two parameters are the filepaths for the satellite data and the mission info data, respectively
 if __name__ == "__main__":
-    missionCreator = MissionCreator("../../Data/", "../../Missions/Alpha Test/", "../../Parsed Data/")
+    missionCreator = MissionCreator("../../Data/", "../../Missions/Beta Test/", "../../Parsed Data/")
 
