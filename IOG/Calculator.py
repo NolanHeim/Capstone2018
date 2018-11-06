@@ -31,6 +31,7 @@ class Calculator:
         self.Rotational_Speed_Earth = (7.2921159 * np.power(10.0, -5.0))
         self.RataDieJDtime = 1721424.5 #Days
         self.epoch_index = 0
+        self.uuid_index = 1
     
     
     #Returns the cubic Hermite polynomial function on the
@@ -47,49 +48,51 @@ class Calculator:
             print(position)
         
         for i in range(0, len(dataMatrices)):
-            epoch = self.calc_epoch(extraInfoMatrix[i][self.epoch_index])
-            times = dataMatrices[i][:,0]            
-            
-            data_interval_start = epoch
-            data_interval_end = epoch + datetime.timedelta(seconds=times[-1])
+            if(extraInfoMatrix[i][self.uuid_index] in mission.get_ids_to_consider()):
+                epoch = self.calc_epoch(extraInfoMatrix[i][self.epoch_index])
+                times = dataMatrices[i][:,0]            
+                
+                data_interval_start = epoch
+                data_interval_end = epoch + datetime.timedelta(seconds=times[-1])
+    
+    
+                [start_index, end_index] = self.check_time_intersection(mission_interval_start, mission_interval_end, 
+                                            data_interval_start, data_interval_end, times)
+    
+                if(self.verbose):
+                    print(mission_interval_start)
+                    print(mission_interval_end)
+                    print(data_interval_start)
+                    print(data_interval_end)            
+                    print("Start index: "+str(start_index))
+                    print("End index: "+str(end_index))
+                
+                trimmedMatrix = dataMatrices[i][start_index:end_index]
+                
+                if(self.verbose):            
+                    print(trimmedMatrix.shape)
+    
+                [poly, timingWindows] = self.cubic_hermite_composite(trimmedMatrix, position, epoch)
+    
+                #might want to redfinie times here
+    
+                if(self.plot):
+                    stopPlot = 3*1440
+                    dataECEF = dataMatrices[i][:,1:7]
+                    posECEF = self.geo_to_ecef(position[0], position[1], position[2])
+                    VF = self.satellite_visibility(dataECEF, times, posECEF)                        
+                    y = poly(times[0:stopPlot])
+                    print(len(times))
+                    fig1, ax1 = plt.subplots()
+                    ax1.plot(times[0:stopPlot], VF[0:stopPlot], color="blue", label="Visibility Function", linewidth=5.0)
+                    ax1.plot(times[0:stopPlot], y, color="black", linestyle='-', label="Interpolation", linewidth=3.0)            
+                    ax1.set_xlabel('Time (s)')
+                    ax1.set_ylabel('Visibility Function')
+                    ax1.set_title('Interpolation With Error = 0.1')
+                    plt.legend()
+                    plt.show()
 
-
-            [start_index, end_index] = self.check_time_intersection(mission_interval_start, mission_interval_end, 
-                                        data_interval_start, data_interval_end, times)
-
-            if(self.verbose):
-                print(mission_interval_start)
-                print(mission_interval_end)
-                print(data_interval_start)
-                print(data_interval_end)            
-                print("Start index: "+str(start_index))
-                print("End index: "+str(end_index))
-            
-            trimmedMatrix = dataMatrices[i][start_index:end_index]
-            
-            if(self.verbose):            
-                print(trimmedMatrix.shape)
-
-            poly = self.cubic_hermite_composite(trimmedMatrix, position, epoch)
-
-            #might want to redfinie times here
-
-            if(self.plot):
-                stopPlot = 3*1440
-                dataECEF = dataMatrices[i][:,1:7]
-                posECEF = self.geo_to_ecef(position[0], position[1], position[2])
-                VF = self.satellite_visibility(dataECEF, times, posECEF)                        
-                y = poly(times[0:stopPlot])
-                print(len(times))
-                fig1, ax1 = plt.subplots()
-                ax1.plot(times[0:stopPlot], VF[0:stopPlot], color="blue", label="Visibility Function", linewidth=5.0)
-                ax1.plot(times[0:stopPlot], y, color="black", linestyle='-', label="Interpolation", linewidth=3.0)            
-                ax1.set_xlabel('Time (s)')
-                ax1.set_ylabel('Visibility Function')
-                ax1.set_title('Interpolation With Error = 0.1')
-                plt.legend()
-                plt.show()
-
+                return [timingWindows, extraInfoMatrix[i][self.uuid_index]]
         
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         #t2 = time.time()        
@@ -297,7 +300,7 @@ class Calculator:
         
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
-        return cubicHermitePoly    
+        return [cubicHermitePoly, timeWindows]    
     
     
     def create_time_windows(self, roots, times, VF, epoch):

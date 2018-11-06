@@ -29,6 +29,7 @@ import os
 import numpy as np
 from Mission import *
 import time
+import uuid
 
 ###IMPORTANT - CHANGE THIS WHEN WE MOVE ON FROM PHASE 1###
 phase1 = True
@@ -59,7 +60,9 @@ class Parser:
         
         self.jDate_offset = 3
         
-        self.INDEX_OF_COORDINATES = 3   
+        self.INDEX_OF_COORDINATES = 3
+        
+        self.databaseFilename = "Satellite_Database.json"
     
    
     def parse_data(self, parsed_datapath):
@@ -75,6 +78,10 @@ class Parser:
             JDLine = fileLines[JDateIndex].split()
             jDate = float(JDLine[-1])
         
+            satelliteID = uuid.uuid4()        
+            satelliteName = filename[0:-2]
+            self.updateDatabase(satelliteName, satelliteID, parsed_datapath)
+        
             dataStartIndex = fileLines.index('EphemerisTimePosVel') + 1
             dataStopIndex = fileLines.index('END Ephemeris') - 1
             dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
@@ -82,12 +89,8 @@ class Parser:
             newFile = os.path.join(parsed_datapath, 'parsed_'+filename[0:-2])
             extraInfoFile = os.path.join(parsed_datapath, 'ex_parsed_'+filename[0:-2])
             
-            extraInfo = [jDate, 0, 0, 0, 0, 0, 0]            
+            extraInfo = [jDate, satelliteID, 0, 0, 0, 0, 0]            
             
-            #dataArray = []
-            #dataArray.append(extraInfo)
-            #dataArray.append(dataMatrix)
-
             data = np.array(dataMatrix)
             np.save(newFile, data)
             
@@ -118,8 +121,9 @@ class Parser:
             illumThresh = float(self.get_simple_param(fileLines, self.p_illumThresh))
             intervalStart = self.get_simple_param(fileLines, self.p_intervalStart)
             intervalEnd = self.get_simple_param(fileLines, self.p_intervalEnd)            
+            idsToConsider = []
             
-            newMission = Mission(targetCoordinates, name, sensorType, illumDir, illumThresh, intervalStart, intervalEnd)
+            newMission = Mission(targetCoordinates, name, sensorType, illumDir, illumThresh, intervalStart, intervalEnd, idsToConsider)
             
             missions.append(newMission)
             
@@ -176,6 +180,20 @@ class Parser:
         else:
             return 'ERROR'
 
+
+    #keeps track of which satellites we have
+    def updateDatabase(self, satelliteName, satelliteID, parsed_datapath):
+        if os.path.isfile(parsed_datapath + self.databaseFilename): #then our database already exists
+            with open(parsed_datapath + self.databaseFilename, "w") as database_json:
+                database_dict = json.load(database_json)
+                if(satelliteID not in database_dict):
+                    database_dict.update({satelliteID : satelliteName})
+                json.dump(database_dict, database_json)
+        else:
+            with open(parsed_datapath + self.databaseFilename, "w") as database_json:
+                new_dict = {satelliteID : satelliteName}
+                json.dump(database_json, new_dict)
+                
 
 # Code that runs the parser as standalone. This just parses and stores satellite data. 
 if __name__ == "__main__":

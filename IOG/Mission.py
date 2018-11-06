@@ -21,6 +21,7 @@ class Mission:
         self.illumThresh = illumThresh
         self.intervalStart = intervalStart
         self.intervalEnd = intervalEnd
+        self.idsToConsider = idsToConsider
 
         #Parse the start and end times here.
         #Save as datetimes.
@@ -75,3 +76,6 @@ class Mission:
     
     def get_interval_end_time(self):
         return self.endDateTime
+        
+    def get_ids_to_consider(self):
+        return self.idsToConsider

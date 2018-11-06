@@ -32,7 +32,7 @@ def api_root():
 #post
 @app.route('/visibility/search', methods = ['POST'])
 def api_search():
-
+        
     request_uuid = uuid.uuid4()
     opportunities = self.MC.generate_imaging_opportunities(request.json, request_uuid)        
 

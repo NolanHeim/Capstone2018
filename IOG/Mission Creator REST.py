@@ -35,7 +35,12 @@ class MissionCreatorREST:
         startTime = input_dict.get("POI", "").get("startTime", "")
         endTime = input_dict.get("POI", "").get("endTime", "")
         
-        mission = Mission(targetCoordinates, name, "", "", 0, startTime, endTime)
+        if("PlatformID" in input_dict):
+            idsToConsider = input_dict.get("PlatformID")
+        else:
+            idsToConsider = []
+        
+        mission = Mission(targetCoordinates, name, "", "", 0, startTime, endTime, idsToConsider)
         return mission
         
 
@@ -57,8 +62,8 @@ class MissionCreatorREST:
         for i in range(0, len(sats)):
             #create an opportunity json for this satellite
             opportunities = {
-                'Platform ID': sats[i]
-                'Oppotunity Window': windows_per_sat[i]                            
+                'Platform ID': sats[i],
+                'Oppotunity Window': windows_per_sat[i],
             }
 
             #opp_json = json.dump(opportunities)
@@ -67,6 +72,9 @@ class MissionCreatorREST:
         t1 = time.time()
         deltaT = t1-t0
         print('Total Time: ' + str(deltaT))
+        
+        with open(self.parsed_datapath + str(uuid) + ".json", "w") as results_json:
+            json.dump(opportunity_jsons, results_json)
 
         return opportunity_jsons
 
