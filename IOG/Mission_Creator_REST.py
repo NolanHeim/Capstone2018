@@ -17,12 +17,13 @@ import json
 
 import time
 
-class MissionCreatorREST:
+class Mission_Creator_REST:
 
 
     #initialization function for the mission creator class    
-    def __init__(self, parsed_datapath):
+    def __init__(self, parsed_datapath, basepath):
         self.test = False
+        self.basepath = basepath
         self.parsed_datapath = parsed_datapath
         self.calculator = Calculator()
         
@@ -73,7 +74,7 @@ class MissionCreatorREST:
         deltaT = t1-t0
         print('Total Time: ' + str(deltaT))
         
-        with open(self.parsed_datapath + str(uuid) + ".json", "w") as results_json:
+        with open(self.basepath + str(uuid) + ".json", "w") as results_json:
             json.dump(opportunity_jsons, results_json)
 
         return opportunity_jsons

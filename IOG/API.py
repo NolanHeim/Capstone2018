@@ -11,30 +11,29 @@ from flask import Flask, url_for, request
 import json
 import uuid
 import os
-from MissionCreatorRest import *
+from Mission_Creator_REST import *
 
-app = Flask(__name__)
+api = Flask(__name__)
 
 
-def __init__(self):
-    self.datapath = "../../Data/"
-    self.basepath = "../../SavedResults/"
-    self.parsed_datapath = "../../Parsed Data/"
-    self.MC = MissionCreatorREST(self.datapath)
-
-@app.route('/')
+@api.route('/')
 def api_root():
-    return 'Welcome'
+    print("HARO")
+    return "Datapath is "datapath
 
 
+@api.route('/hello')
+def api_hello():
+    print("HIYA!")
+    return "Saved Results Path is "+basepath
 
 
 #post
-@app.route('/visibility/search', methods = ['POST'])
+@api.route('/visibility/search', methods = ['POST'])
 def api_search():
         
     request_uuid = uuid.uuid4()
-    opportunities = self.MC.generate_imaging_opportunities(request.json, request_uuid)        
+    opportunities = MC.generate_imaging_opportunities(request.json, request_uuid)        
 
         
     output_json = {
@@ -49,7 +48,7 @@ def api_search():
 
 
 #get
-@app.route('/visibility/<id>', methods = ['GET'])
+@api.route('/visibility/<articleid>', methods = ['GET'])
 def api_getresults(articleid):
     print('You are reading ' + articleid)
     
@@ -69,4 +68,10 @@ def api_getresults(articleid):
     return response
 
 if __name__ == '__main__':
-    app.run()
+    datapath = "../../Data/"
+    basepath = "../../SavedResults/"
+    parsed_datapath = "../../Parsed Data/"
+    MC = MissionCreatorREST(datapath, basepath)
+    parser = Parser(datapath, "")
+    parser.parse_data(parsed_datapath)    
+    api.run()
