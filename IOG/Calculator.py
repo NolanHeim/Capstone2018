@@ -20,7 +20,7 @@ import datetime
 class Calculator:
     
     def __init__(self):
-        self.hermiteError = 0.1
+        self.hermiteError = 0.01
         self.timeStepTolerance = 0.05
         self.plot = False #To display the resulting plots
         self.verbose = False #To display extra information at each step.
@@ -39,7 +39,7 @@ class Calculator:
     def generate_imaging_opportunities(self, mission, dataMatrices, extraInfoMatrix):
         #self.t0 = time.time()
         missionCoordinates = mission.get_coordinates()
-        position = np.array(missionCoordinates[0])
+        position = np.array(missionCoordinates)
         
         mission_interval_start = mission.get_interval_start_time()
         mission_interval_end = mission.get_interval_end_time()
@@ -47,8 +47,13 @@ class Calculator:
         if(self.verbose):        
             print(position)
         
+        timingWindows_Matrix = []
+        satellites_list = []
+        
         for i in range(0, len(dataMatrices)):
-            if(extraInfoMatrix[i][self.uuid_index] in mission.get_ids_to_consider()):
+            #in the first case, every satellite will be considered
+            #in the second case, a given satellite will only be considered if 
+            if(mission.get_ids_to_consider() == [] or extraInfoMatrix[i][self.uuid_index] in mission.get_ids_to_consider()):              
                 epoch = self.calc_epoch(extraInfoMatrix[i][self.epoch_index])
                 times = dataMatrices[i][:,0]            
                 
@@ -91,8 +96,12 @@ class Calculator:
                     ax1.set_title('Interpolation With Error = 0.1')
                     plt.legend()
                     plt.show()
+                
+                timingWindows_Matrix.append(timingWindows)
+                satellites_list.append(str(extraInfoMatrix[i][self.uuid_index]))
 
-                return [timingWindows, extraInfoMatrix[i][self.uuid_index]]
+        return [timingWindows_Matrix, satellites_list]
+        
         
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         #t2 = time.time()        
@@ -192,13 +201,13 @@ class Calculator:
     
     #This will combine the instances of each piecewise cubic hermite.
     def cubic_hermite_composite(self, data, position, epoch):        
-        
         #self.t1 = time.time()
         #print("Time for data trimming = "+str(self.t1 - self.t0))        
         
         #Initial Conditions
         times = data[:,0]
         dataECEF = data[:,1:7]
+
         posECEF = self.geo_to_ecef(position[0], position[1], position[2])
 
         VF = self.satellite_visibility(dataECEF, times, posECEF)
@@ -235,6 +244,7 @@ class Calculator:
         rootSlices = []
         endOfTime= False        
         #Loop through the potential values
+        
         while endOfTime == False:
             #Iterate through the max step (Need to add a maximum iteration reached check)
             k = 1    
@@ -290,6 +300,7 @@ class Calculator:
             ti = times[index]
         
         if(self.verbose):        
+            print("Poly slices has length: ")
             print(len(polySlices))
        
         #Piecewise cubic hermite interpolating polynomial
@@ -318,9 +329,11 @@ class Calculator:
         timingWindow = []
         startIndex = 0
         
-        rootsListUTC = self.seconds_2_utc(epoch, rootsList)        
-        #rootsListUTC = rootsList        
+        rootsListUTC = self.seconds_2_utc(epoch, rootsList)
         
+        for i in range(0, len(rootsListUTC)):
+            rootsListUTC[i] = self.datetime_2_timestamp(rootsListUTC[i]) 
+       
         #print(len(rootsListUTC))        
         
         if(VF[0] > 0):  #then we are already in visibility range, so t0 to the first root is an interval
@@ -360,12 +373,12 @@ class Calculator:
         
         if(range(startIndex, endIndex)[-1] == (endIndex-2)):          
             if(rootsList[-1] != times[-1]):
-                timingWindow.append([rootsListUTC[-1], self.one_time_to_utc(epoch, times[-1])])
+                timingWindow.append([rootsListUTC[-1], self.datetime_2_timestamp(self.one_time_to_utc(epoch, times[-1]))])
                 #timingWindow.append([rootsListUTC[-1], times[-1]])
         
         #if(self.verbose):
         #for window in timingWindow:
-            #print(window)
+         #   print(window)
         
         #print("Time for creating timing windows = "+str(time.time() - t3))        
         
@@ -419,6 +432,7 @@ class Calculator:
     def geo_to_ecef(self, lat, lon, alt):
         a = self.equitorialRadius
         b = self.polarRadius
+
         phi = np.radians(lat)
         lam = np.radians(lon)
         N = ((np.power(a,2.0))/
@@ -429,6 +443,7 @@ class Calculator:
         Z = (( np.power(b,2.0)/np.power(a,2.0) )*N + alt)*np.sin(phi)
         
         return np.column_stack([X,Y,Z])
+        
         
     def satellite_viewing_cone(self, dataECEF, posECEF, posGEO):
         r_sat = dataECEF[:,0:3]  
@@ -502,3 +517,38 @@ class Calculator:
         return [start_index, end_index]
         
         
+    def datetime_2_timestamp(self, dt):
+        year = str(dt.date().year)
+        month = self.resize_2(str(dt.date().month))
+        day = self.resize_2(str(dt.date().day))
+        hour = self.resize_2(str(dt.time().hour))
+        minute = self.resize_2(str(dt.time().minute))
+        second = self.resize_2(str(dt.time().second))
+        milsec = self.resize_3(str(dt.time().microsecond/1000.0))        
+        
+        dateString = year+month+day
+        timeString = hour+":"+minute+":"+second+"."+milsec
+        
+        datetimeString = dateString+"T"+timeString
+        
+        return datetimeString
+        
+    
+    def resize_2(self, myString):
+        if(len(myString) == 1):
+            myString = "0"+myString
+        elif(len(myString) > 2):
+            myString = myString[0:2]
+        
+        return myString
+    
+    
+    def resize_3(self, myString):
+        if(len(myString) == 1):
+            myString = "00"+myString
+        elif(len(myString) == 2):
+            myString = "0"+myString
+        elif(len(myString) > 3):
+            myString = myString[0:3]
+        
+        return myString

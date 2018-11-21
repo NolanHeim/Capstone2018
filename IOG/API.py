@@ -7,7 +7,7 @@
 # Written by Jordan Jones and Nolan Heim
 #
 
-from flask import Flask, url_for, request
+from flask import Flask, url_for, request, Response
 import json
 import uuid
 import os
@@ -18,14 +18,12 @@ api = Flask(__name__)
 
 @api.route('/')
 def api_root():
-    print("HARO")
-    return "Datapath is "datapath
+    return "Welcome to the Imaging Opportunity Generator"
 
 
 @api.route('/hello')
 def api_hello():
-    print("HIYA!")
-    return "Saved Results Path is "+basepath
+    return "Hello"
 
 
 #post
@@ -33,45 +31,59 @@ def api_hello():
 def api_search():
         
     request_uuid = uuid.uuid4()
-    opportunities = MC.generate_imaging_opportunities(request.json, request_uuid)        
+    status = 500
 
-        
+    opportunities = MC.generate_imaging_opportunities(request.json, request_uuid)        
+      
+    if opportunities == "ERR":
+        response = "ERROR - Wrong/missing input object attribute(s)"
+        resp = Response(response, status=400, mimetype='application/json')
+        return resp
+    
     output_json = {
-        'id':request_uuid,
-        'Opportunities':opportunities
+        "id":str(request_uuid),
+        "Opportunities":opportunities
     }
-        
-    response = json.dump(output_json)
-    response.status_code = 200
-        
-    return response
+
+    #saves output for use by GET function        
+    with open(results_path + str(request_uuid) + ".json", "w") as save_output:
+        save_output.write(json.dumps(output_json))
+        status = 200
+    
+    response = json.dumps(output_json)
+    
+    resp = Response(response, status=status, mimetype='application/json')
+
+    return resp
 
 
 #get
 @api.route('/visibility/<articleid>', methods = ['GET'])
-def api_getresults(articleid):
-    print('You are reading ' + articleid)
-    
+def api_get_results(articleid):
+
     #no such results id exists
-    if not (os.path.isfile(self.basepath + articleid + ".json")):
-        response = ""
-        response.status_code = 400
-        return response
+    if not (os.path.isfile(results_path+str(articleid)+".json")):
+        response = "ERROR - No results for specified ID"
+        resp = Response(response, status=400)
+        return resp
     
-    with open(self.basepath + articleid + ".json", "r") as read_file:
-        response = read_file
-        response.status_code = 200
-        return response
+    else:
+        with open(results_path+str(articleid)+".json", "r") as read_file:
+            response = read_file.readlines()
+
+        resp = Response(response, status=200, mimetype='application/json')
+        return resp
     
-    response = ""
-    response.status_code = 500
-    return response
+    response = "ERROR - Backend error"
+    resp = Response(response, status=500)
+    return resp
+
 
 if __name__ == '__main__':
     datapath = "../../Data/"
-    basepath = "../../SavedResults/"
+    results_path = "../../Saved Results/"
     parsed_datapath = "../../Parsed Data/"
-    MC = MissionCreatorREST(datapath, basepath)
+    MC = Mission_Creator_REST(parsed_datapath, results_path)
     parser = Parser(datapath, "")
-    parser.parse_data(parsed_datapath)    
+    #parser.parse_data(parsed_datapath)    
     api.run()

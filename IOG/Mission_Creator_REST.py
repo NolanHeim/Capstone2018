@@ -21,29 +21,12 @@ class Mission_Creator_REST:
 
 
     #initialization function for the mission creator class    
-    def __init__(self, parsed_datapath, basepath):
+    def __init__(self, parsed_datapath, results_path):
         self.test = False
-        self.basepath = basepath
+        self.results_path = results_path
         self.parsed_datapath = parsed_datapath
         self.calculator = Calculator()
-        
     
-    #makes a mission object based on the queried visibility search input json
-    def create_mission_from_json(self, input_json, uuid):
-        input_dict = json.load(request.json)
-        targetCoordinates = input_dict.get("Target", "")
-        name = str(uuid)
-        startTime = input_dict.get("POI", "").get("startTime", "")
-        endTime = input_dict.get("POI", "").get("endTime", "")
-        
-        if("PlatformID" in input_dict):
-            idsToConsider = input_dict.get("PlatformID")
-        else:
-            idsToConsider = []
-        
-        mission = Mission(targetCoordinates, name, "", "", 0, startTime, endTime, idsToConsider)
-        return mission
-        
 
     # Starts the calculator's processes to generate results    
     def generate_imaging_opportunities(self, input_json, uuid):
@@ -52,32 +35,62 @@ class Mission_Creator_REST:
 
         t0 = time.time()
 
-
         mission = self.create_mission_from_json(input_json, uuid)
+        
+        if (mission.check_params() == False):
+            return "ERR"
+        
+        #mission.display_parameters()
         
         #this should be a list of a list of windows: where the first list corresponds to satellites,
         #and the list within it to the windows
         [windows_per_sat, sats] = self.calculator.generate_imaging_opportunities(mission, dataMatrices, extraInfoMatrix)
 
+        #print(len(windows_per_sat))
+        #print(sats)
+        #print(len(windows_per_sat[0]))
+        #print(windows_per_sat[0])
+
         opportunity_jsons = []
         for i in range(0, len(sats)):
             #create an opportunity json for this satellite
             opportunities = {
-                'Platform ID': sats[i],
-                'Oppotunity Window': windows_per_sat[i],
+                "Platform ID": str(sats[i]),
+                "Oppotunity Window": str(windows_per_sat[i]),
             }
 
-            #opp_json = json.dump(opportunities)
-            opportunity_jsons.append(opportunities)
+            
+            opp_json = json.dumps(opportunities)
+            opportunity_jsons.append(opp_json)
 
         t1 = time.time()
         deltaT = t1-t0
         print('Total Time: ' + str(deltaT))
         
-        with open(self.basepath + str(uuid) + ".json", "w") as results_json:
-            json.dump(opportunity_jsons, results_json)
-
+        #print(opportunity_jsons)        
+        
         return opportunity_jsons
+
+
+    #makes a mission object based on the queried visibility search input json
+    def create_mission_from_json(self, input_json, uuid):
+        #print(json.dumps(input_json))
+        #print("making dictionary")
+        input_dict = input_json
+        print(input_dict)
+        targetCoordinates = input_dict.get("Target", "")
+        print(targetCoordinates)
+        name = str(uuid)
+        startTime = input_dict.get("POI", "").get("startTime", "")
+        endTime = input_dict.get("POI", "").get("endTime", "")
+        
+        if("PlatformID" in input_dict):
+            idsToConsider = input_dict.get("PlatformID")
+        else:
+            idsToConsider = []
+            
+        mission = Mission(targetCoordinates, name, "", "", 0, startTime, endTime, idsToConsider)
+        return mission        
 
 
     # Creates a memmap to read parsed satellite data. Note that this function assumes the parser
