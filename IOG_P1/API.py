@@ -35,10 +35,10 @@ def api_search():
 
     opportunities = MC.generate_imaging_opportunities(request.json, request_uuid)        
       
-    if opportunities == "ERR":
-        response = "ERROR - Wrong/missing input object attribute(s)"
-        resp = Response(response, status=400, mimetype='application/json')
-        return resp
+    #if opportunities == "ERR":
+    #    response = "ERROR - Wrong/missing input object attribute(s)"
+    #    resp = Response(response, status=400, mimetype='application/json')
+   #     return resp
     
     output_json = {
         "id":str(request_uuid),

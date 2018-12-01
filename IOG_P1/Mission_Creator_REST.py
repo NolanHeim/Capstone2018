@@ -37,8 +37,8 @@ class Mission_Creator_REST:
 
         mission = self.create_mission_from_json(input_json, uuid)
         
-        if (mission.check_params() == False):
-            return "ERR"
+        #if (mission.check_params() == False):
+         #   return "ERR"
         
         #mission.display_parameters()
         
