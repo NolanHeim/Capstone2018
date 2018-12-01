@@ -12,6 +12,7 @@
 
 from Parser import *
 from Calculator import *
+from Constellation import *
 import numpy as np
 import json
 
@@ -26,6 +27,7 @@ class Mission_Creator_REST:
         self.results_path = results_path
         self.parsed_datapath = parsed_datapath
         self.calculator = Calculator()
+        self.constellation = Constellation(self.parsed_datapath)
     
 
     # Starts the calculator's processes to generate results    
@@ -36,7 +38,7 @@ class Mission_Creator_REST:
         t0 = time.time()
 
         mission = self.create_mission_from_json(input_json, uuid)
-        
+        ## Constellation add all mission satellite UUID's not already in.
         if (mission.check_params() == False):
             return "ERR"
         
@@ -91,30 +93,3 @@ class Mission_Creator_REST:
             
         mission = Mission(targetCoordinates, name, "", "", 0, startTime, endTime, idsToConsider)
         return mission        
-
-
-    # Creates a memmap to read parsed satellite data. Note that this function assumes the parser
-    # has already been ran by itself.
-    # This process will eventually be moved to the Satellite/Constellation classes 
-    def load_data_matrices(self):
-        dataMatrices = []
-
-        for filename in os.listdir(self.parsed_datapath):
-            if(filename[0] == 'p'):
-                matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
-                dataMatrices.append(matrix)
-            
-        return np.array(dataMatrices)
-        
-        
-    def load_extra_info(self):
-        ei_Matrices = []
-
-        for filename in os.listdir(self.parsed_datapath):
-
-            if(filename[0] == 'e'):
-                matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
-                ei_Matrices.append(matrix)
-            
-        return np.array(ei_Matrices)    
-    

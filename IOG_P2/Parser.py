@@ -18,7 +18,8 @@
 #  the Mission Creator class.
 # 
 # Inputs:
-#   datapath: The relative location of the satellite data. (ex: ../../Data/)
+#   orbitdatapath: The relative location of the satellite (orbit) data. (ex: ../../Data/Orbit/)
+#   sensordatapath: Relative location of the sensor data. (ex: ../../Data/Sensor/)
 #   missionpath: The relative location of all satellite mission files (ex: ../../Missions/)
 #
 # Initial Creation Date: 09/26/2018
@@ -39,8 +40,9 @@ phase1 = True
 
 class Parser:
     
-    def __init__(self, datapath, missionpath):
-        self.datapath = datapath
+    def __init__(self, orbitdatapath, sensordatapath, missionpath):
+        self.orbitdatapath = orbitdatapath        
+        self.sensordatapath = sensordatapath
         self.missionpath = missionpath
     
         #how many coordinates there are
@@ -62,14 +64,17 @@ class Parser:
         self.jDate_offset = 3
         
         self.INDEX_OF_COORDINATES = 3
-        
+        self.SENSOR_INDEX_INCREMENT = 5
         self.databaseFilename = "Satellite_Database.json"
     
-   
-    def parse_data(self, parsed_datapath):
-        t0 = time.time()
-        for filename in os.listdir(self.datapath): 
-            dataFile = os.path.join(self.datapath, filename)
+    # parses the orbital data for each satellite
+    #
+    # Inputs:
+    #   parsed_datapath - path for satellite data to be saved at.
+    #
+    def parse_orbit_data(self, parsed_datapath):
+        for filename in os.listdir(self.orbitdatapath): 
+            dataFile = os.path.join(self.orbitdatapath, filename)
             fileObj = open(dataFile, 'r')
             fileLines = [line.rstrip('\n') for line in fileObj]
             fileLines[:] = [x for x in fileLines if x != '']
@@ -78,26 +83,77 @@ class Parser:
             JDateIndex = fileLines.index('BEGIN Ephemeris') + self.jDate_offset
             JDLine = fileLines[JDateIndex].split()
             jDate = float(JDLine[-1])
-        
+            
             satelliteID = uuid.uuid4()        
-            satelliteName = filename[0:-2]
+            satelliteName = os.path.splitext(filename)[0]
             self.updateDatabase(satelliteName, satelliteID, parsed_datapath)
         
             dataStartIndex = fileLines.index('EphemerisTimePosVel') + 1
             dataStopIndex = fileLines.index('END Ephemeris') - 1
             dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
             
-            newFile = os.path.join(parsed_datapath, 'parsed_'+filename[0:-2])
-            extraInfoFile = os.path.join(parsed_datapath, 'ex_parsed_'+filename[0:-2])
             
-            extraInfo = [jDate, satelliteID, 0, 0, 0, 0, 0]            
+            newFile = os.path.join(parsed_datapath, 'parsed_'+satelliteName)
+            extraInfoFile = os.path.join(parsed_datapath, 'ex_parsed_'+satelliteName)
+            
+            
+            extraInfo = [jDate, satelliteID, satelliteName, newFile, sensorFile]            
             
             data = np.array(dataMatrix)
             np.save(newFile, data)
             
             extra = np.array(extraInfo)
             np.save(extraInfoFile, extra)
-            
+
+    # parses the sensor data for each satellite
+    # 
+    # Inputs:
+    #   parsed_datapath - path for satellite data to be saved at.
+    #
+    def parse_sensor_data(self, parsed_datapath):
+        
+        for filename in os.listdir(self.sensordatapath):
+            sensorDict = {}
+            sensorDataFile = os.path.join(self.sensordatapath, filename)
+            fileObj = open(sensorDataFile, 'r')
+            fileLines = [line.rstrip('\n') for line in fileObj]
+            fileLines[:] = [x for x in fileLines if x != '']
+            fileObj.close()
+            satelliteName = os.path.splitext(filename)[0]
+            numSensors = fileLines[0][3] 
+            baseI = 1
+            for sensorIndex in range(1,numSensors+1):
+                sensorName = fileLines[baseI][1:]
+                sensorDict[sensorName] = {}
+                sensorDict[sensorName]['Type'] = fileLines[baseI+1][1:]
+                orientation = [float(i) for i in fileLines[baseI+2][1:].split(',')]
+                sensorDict[sensorName]['Orientation'] = orientation
+                sensorDict[sensorName]['Angle Dependent'] = fileLines[baseI+3][2]
+                if(fileLines[baseI+3][2] == 'True'):
+                    #Expect 1 Angles
+                    sensorDict[sensorName]['Rotation'] = float(fileLines[baseI+4][1])                    
+                else:
+                    #Expect 2 Angles
+                    rotation = [float(i) for i in fileLines[baseI+4][1:].split(',')]
+                    sensorDict[sensorName]['Rotation'] = rotation
+                #Increment baseI for the next sensor
+                baseI = baseI + self.SENSOR_INDEX_INCREMENT
+                #NOTE: Could add a check here to see if they are trying a dependent push broom (can't happen)
+                # AND/OR: Could check to see if the expected 1 or 2 angles is incorrect. 
+            with open(parsed_datapath + "sensor_parsed_"+satelliteName+".json", "w") as sensor_output:
+                sensor_output.write(json.dumps(sensorDict))
+        
+    # Controls the Parsing of Satellite data
+    #
+    # Inputs:
+    #   parsed_datapath - path for satellite data to be saved at.
+    #
+    def parse_data(self, parsed_datapath):
+        t0 = time.time()
+        #Parse orbital data & save
+        self.parse_orbit_data(parsed_datapath)
+        #Parse sensor data & save2
+        self.parse_sensor_data(parsed_datapath)
         print("Total time = "+str(time.time() - t0))
             
 
