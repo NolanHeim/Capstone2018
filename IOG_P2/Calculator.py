@@ -32,35 +32,35 @@ class Calculator:
         self.RataDieJDtime = 1721424.5 #Days
         self.epoch_index = 0
         self.uuid_index = 1
-    
-    
+
+
     #Returns the cubic Hermite polynomial function on the
     #subinterval [subt1,subt2]
-    def generate_imaging_opportunities(self, mission, dataMatrices, extraInfoMatrix):
+    def generate_imaging_opportunities(self, mission, constellation):
         #self.t0 = time.time()
         missionCoordinates = mission.get_coordinates()
         position = np.array(missionCoordinates)
-        
+
         mission_interval_start = mission.get_interval_start_time()
         mission_interval_end = mission.get_interval_end_time()
-                
+
         if(self.verbose):        
             print(position)
-        
+
         timingWindows_Matrix = []
         satellites_list = []
-        
-        for i in range(0, len(dataMatrices)):
+
+        for sat in constellation.get_satellite_list():
             #in the first case, every satellite will be considered
-            #in the second case, a given satellite will only be considered if 
-            if(mission.get_ids_to_consider() == [] or extraInfoMatrix[i][self.uuid_index] in mission.get_ids_to_consider()):              
-                epoch = self.calc_epoch(extraInfoMatrix[i][self.epoch_index])
-                times = dataMatrices[i][:,0]            
-                
+            #in the second case, a given satellite will only be considered if its uuid is in the list to consider for this mission
+            if(mission.get_ids_to_consider() == [] or sat.get_uuid() in mission.get_ids_to_consider()):              
+                epoch = self.calc_epoch(sat.get_epoch())
+                dataMatrix = sat.get_data_matrix()
+                times = dataMatrix[:,0]
+
                 data_interval_start = epoch
                 data_interval_end = epoch + datetime.timedelta(seconds=times[-1])
-    
-    
+
                 [start_index, end_index] = self.check_time_intersection(mission_interval_start, mission_interval_end, 
                                             data_interval_start, data_interval_end, times)
     
@@ -72,7 +72,7 @@ class Calculator:
                     print("Start index: "+str(start_index))
                     print("End index: "+str(end_index))
                 
-                trimmedMatrix = dataMatrices[i][start_index:end_index]
+                trimmedMatrix = dataMatrix[start_index:end_index]
                 
                 if(self.verbose):            
                     print(trimmedMatrix.shape)
@@ -83,7 +83,7 @@ class Calculator:
     
                 if(self.plot):
                     stopPlot = 3*1440
-                    dataECEF = dataMatrices[i][:,1:7]
+                    dataECEF = dataMatrix[:,1:7]
                     posECEF = self.geo_to_ecef(position[0], position[1], position[2])
                     VF = self.satellite_visibility(dataECEF, times, posECEF)                        
                     y = poly(times[0:stopPlot])
@@ -98,11 +98,11 @@ class Calculator:
                     plt.show()
                 
                 timingWindows_Matrix.append(timingWindows)
-                satellites_list.append(str(extraInfoMatrix[i][self.uuid_index]))
+                satellites_list.append(str(sat.get_uuid()))
 
         return [timingWindows_Matrix, satellites_list]
-        
-        
+
+
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         #t2 = time.time()        
         

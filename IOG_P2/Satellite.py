@@ -19,6 +19,7 @@ class Satellite:
         
         self.sensors = {}
         self.dataMatrix = 0
+
         
     def sort_extra_info(self, extraInfo):
         sortedInfo = {}
@@ -26,6 +27,7 @@ class Satellite:
         sortedInfo['uuid'] = extraInfo[self.uuid_index]
         sortedInfo['filename'] = extraInfo[self.filename_index]
         return sortedInfo
+
     
     def set_sensors(self, sensor_model):
         for sensor in sensor_model:
@@ -34,18 +36,22 @@ class Satellite:
     def set_data_matrix(self, dataMatrix):
         self.dataMatrix = dataMatrix
     
+    
     def get_data_matrix(self):
         return self.dataMatrix
+
         
     def get_epoch(self):
         return self.sort_extra_info['epoch']
+
     
     def get_uuid(self):
         return self.sort_extra_info['uuid']
+
         
     def get_filename(self):
         return self.sort_extra_info['filename']
+
         
     def get_sensors(self):
         return self.sensors
-        

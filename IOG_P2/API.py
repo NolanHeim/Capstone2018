@@ -21,13 +21,8 @@ def api_root():
     return "Welcome to the Imaging Opportunity Generator"
 
 
-@api.route('/hello')
-def api_hello():
-    return "Hello"
-
-
 #post
-@api.route('/visibility/search', methods = ['POST'])
+@api.route('/opportunity/search', methods = ['POST'])
 def api_search():
         
     request_uuid = uuid.uuid4()
@@ -58,7 +53,7 @@ def api_search():
 
 
 #get
-@api.route('/visibility/<articleid>', methods = ['GET'])
+@api.route('/opportunity/<articleid>', methods = ['GET'])
 def api_get_results(articleid):
 
     #no such results id exists

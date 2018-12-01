@@ -32,8 +32,6 @@ class Mission_Creator_REST:
 
     # Starts the calculator's processes to generate results    
     def generate_imaging_opportunities(self, input_json, uuid):
-        dataMatrices = self.load_data_matrices()
-        extraInfoMatrix = self.load_extra_info()
 
         t0 = time.time()
 
@@ -41,17 +39,13 @@ class Mission_Creator_REST:
         ## Constellation add all mission satellite UUID's not already in.
         if (mission.check_params() == False):
             return "ERR"
-        
-        #mission.display_parameters()
-        
+
+        uuid_list = mission.get_ids_to_consider()
+        self.constellation.add_satellite_data(uuid_list)
+                
         #this should be a list of a list of windows: where the first list corresponds to satellites,
         #and the list within it to the windows
-        [windows_per_sat, sats] = self.calculator.generate_imaging_opportunities(mission, dataMatrices, extraInfoMatrix)
-
-        #print(len(windows_per_sat))
-        #print(sats)
-        #print(len(windows_per_sat[0]))
-        #print(windows_per_sat[0])
+        [windows_per_sat, sats] = self.calculator.generate_imaging_opportunities(mission, constellation)
 
         opportunity_jsons = []
         for i in range(0, len(sats)):
@@ -61,7 +55,6 @@ class Mission_Creator_REST:
                 "Oppotunity Window": str(windows_per_sat[i]),
             }
 
-            
             opp_json = json.dumps(opportunities)
             opportunity_jsons.append(opp_json)
 
