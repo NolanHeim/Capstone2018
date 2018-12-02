@@ -54,7 +54,7 @@ class Parser:
         #self.p_intervalStart = 4
         #self.p_intervalEnd = 5
         
-        #self.jDate_offset = 3
+        self.jDate_offset = 3
         
         #self.INDEX_OF_COORDINATES = 3
         #self.SENSOR_INDEX_INCREMENT = 5
@@ -70,7 +70,7 @@ class Parser:
         for filename in os.listdir(self.orbitdatapath): 
             dataFile = os.path.join(self.orbitdatapath, filename)
             fileObj = open(dataFile, 'r')
-            fileLines = [line.rstrip('\n') for line in fileObj]
+            fileLines = [line.rstrip('\n').strip(' ').strip('\t') for line in fileObj]
             fileLines[:] = [x for x in fileLines if x != '']
             fileObj.close()
         
@@ -80,19 +80,19 @@ class Parser:
             
             satelliteID = uuid.uuid4()        
             satelliteName = os.path.splitext(filename)[0]
-            self.updateDatabase(satelliteName, satelliteID, parsed_datapath)
+            #self.updateDatabase(satelliteName, satelliteID, parsed_datapath)
         
             dataStartIndex = fileLines.index('EphemerisTimePosVel') + 1
             dataStopIndex = fileLines.index('END Ephemeris') - 1
             dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
             
-            newFile = os.path.join(parsed_datapath, 'parsed_'+satelliteName)
+            parsed_dataFile = os.path.join(parsed_datapath, 'parsed_'+satelliteName)
             extraInfoFile = os.path.join(parsed_datapath, 'ex_parsed_'+satelliteName)
             
-            extraInfo = [jDate, satelliteID, satelliteName, newFile, sensorFile]            
+            extraInfo = [jDate, satelliteID, satelliteName, parsed_dataFile]            
             
             data = np.array(dataMatrix)
-            np.save(newFile, data)
+            np.save(parsed_dataFile, data)
             
             extra = np.array(extraInfo)
             np.save(extraInfoFile, extra)
@@ -249,6 +249,6 @@ class Parser:
 
 # Code that runs the parser as standalone. This just parses and stores satellite data. 
 if __name__ == "__main__":
-    parser = Parser('../../Data/', '../../Missions/Alpha Test/')
-    parser.parse_data('../../Parsed Data/')
+    parser = Parser('../../Data/Orbit/', '../../Data/Sensor/')
+    parser.parse_orbit_data('../../Parsed Data/')
 

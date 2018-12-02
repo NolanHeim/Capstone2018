@@ -23,8 +23,8 @@ class Constellation:
         if(uuids == []): 
             for uuid in self.constellation:
                 satellite = self.constellation[uuid]
-                dataMatrix = self.load_data_matrix(satellite.get_satellite_name())
-                sensorModel = self.load_sensor_model(satellite.get_satellite_name())
+                dataMatrix = self.load_data_matrix(satellite.get_parsed_orbit_name())
+                sensorModel = self.load_sensor_model(satellite.get_parsed_sensor_name())
                 satellite.set_data_matrix(dataMatrix)
                 satellite.set_sensors(sensorModel)
 

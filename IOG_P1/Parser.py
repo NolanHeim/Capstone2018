@@ -41,11 +41,10 @@ class Parser:
     
     def __init__(self, datapath):
         self.datapath = datapath
-    
         
 #        self.lineLeaders = ['Name:', 'Sensor_Type:', 'Illumination_Direction:',
-                            'Illumination_Threshold:', 'Interval_Start_Time:',
-                            'Interval_End_Time:']
+         #                   'Illumination_Threshold:', 'Interval_Start_Time:',
+         #                   'Interval_End_Time:']
  #       self.p_name = 0
   #      self.p_sensorType = 1
    #     self.p_illumDir = 2
@@ -60,12 +59,12 @@ class Parser:
         #self.databaseFilename = "Satellite_Database.json"
     
    
-    def parse_data(self, parsed_datapath):
+    def parse_orbit_data(self, parsed_datapath):
         t0 = time.time()
         for filename in os.listdir(self.datapath): 
             dataFile = os.path.join(self.datapath, filename)
             fileObj = open(dataFile, 'r')
-            fileLines = [line.rstrip('\n') for line in fileObj]
+            fileLines = [line.rstrip('\n').strip(' ').strip('\t') for line in fileObj]
             fileLines[:] = [x for x in fileLines if x != '']
             fileObj.close()
         
@@ -74,9 +73,7 @@ class Parser:
             jDate = float(JDLine[-1])
         
             satelliteID = uuid.uuid4()        
-            satelliteName = filename[0:-2]
-            self.updateDatabase(satelliteName, satelliteID, parsed_datapath)
-        
+ 
             dataStartIndex = fileLines.index('EphemerisTimePosVel') + 1
             dataStopIndex = fileLines.index('END Ephemeris') - 1
             dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
@@ -192,6 +189,6 @@ class Parser:
 
 # Code that runs the parser as standalone. This just parses and stores satellite data. 
 if __name__ == "__main__":
-    parser = Parser('../../Data/', '../../Missions/Alpha Test/')
-    parser.parse_data('../../Parsed Data/')
+    parser = Parser('../../Data/Orbit/')
+    parser.parse_orbit_data('../../Parsed Data/')
 
