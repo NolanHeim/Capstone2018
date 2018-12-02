@@ -57,7 +57,7 @@ class Parser:
         self.jDate_offset = 3
         
         #self.INDEX_OF_COORDINATES = 3
-        #self.SENSOR_INDEX_INCREMENT = 5
+        self.SENSOR_INDEX_INCREMENT = 6
         #self.databaseFilename = "Satellite_Database.json"
     
     
@@ -113,21 +113,31 @@ class Parser:
             fileLines[:] = [x for x in fileLines if x != '']
             fileObj.close()
             satelliteName = os.path.splitext(filename)[0]
-            numSensors = fileLines[0][3] 
+
+            numSensors = int(fileLines[0].split(" ")[3])
             baseI = 1
+
             for sensorIndex in range(1,numSensors+1):
-                sensorName = fileLines[baseI][1:]
+                sensorName = ""
+                nameLine = fileLines[baseI].split(" ")
+                for index in range(1, len(nameLine)):
+                    sensorName = sensorName + nameLine[index] + " "
+                sensorName = sensorName.strip(" ")
+                
                 sensorDict[sensorName] = {}
-                sensorDict[sensorName]['Type'] = fileLines[baseI+1][1:]
-                orientation = [float(i) for i in fileLines[baseI+2][1:].split(',')]
+                sensorDict[sensorName]['Type'] = fileLines[baseI+1].split(' ')[1]
+                sensorDict[sensorName]['Imaging Type'] = fileLines[baseI+2].split(' ')[2]
+                
+                orientation = [float(i) for i in fileLines[baseI+3].split(' ')[1].split(',')]
+                
                 sensorDict[sensorName]['Orientation'] = orientation
-                sensorDict[sensorName]['Angle Dependent'] = fileLines[baseI+3][2]
-                if(fileLines[baseI+3][2] == 'True'):
+                sensorDict[sensorName]['Angle Dependent'] = fileLines[baseI+4].split(' ')[2]
+                if(fileLines[baseI+4].split(' ')[2] == 'True'):
                     #Expect 1 Angles
-                    sensorDict[sensorName]['Rotation'] = float(fileLines[baseI+4][1])                    
+                    sensorDict[sensorName]['Rotation'] = float(fileLines[baseI+5].split(' ')[1])                    
                 else:
                     #Expect 2 Angles
-                    rotation = [float(i) for i in fileLines[baseI+4][1:].split(',')]
+                    rotation = [float(i) for i in fileLines[baseI+5].split(' ')[1].split(',')]
                     sensorDict[sensorName]['Rotation'] = rotation
                 #Increment baseI for the next sensor
                 baseI = baseI + self.SENSOR_INDEX_INCREMENT
@@ -250,5 +260,5 @@ class Parser:
 # Code that runs the parser as standalone. This just parses and stores satellite data. 
 if __name__ == "__main__":
     parser = Parser('../../Data/Orbit/', '../../Data/Sensor/')
-    parser.parse_orbit_data('../../Parsed Data/')
+    parser.parse_sensor_data('../../Parsed Data/')
 

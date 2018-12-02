@@ -18,7 +18,7 @@ class Satellite:
         
         self.extraInfo = self.sort_extra_info(extraInfo)
         
-        self.sensors = {}
+        self.sensors = []
         self.dataMatrix = 0
 
         
@@ -31,10 +31,10 @@ class Satellite:
         return sortedInfo
 
     
-    def set_sensors(self, sensor_model):
+    def set_sensors(self, sensor_model): #sensor_model is a dictionary containing all sensor
         for sensor in sensor_model:
-            self.sensors = sensor ##Need to update this.
-
+            self.sensors.append(sensor) ##Need to update this.
+            
             
     def set_data_matrix(self, dataMatrix):
         self.dataMatrix = dataMatrix
@@ -58,10 +58,7 @@ class Satellite:
 
     def get_parsed_orbit_name(self):
         return self.extraInfo['parsed_filename']
-
-
-    def get_parsed_sensor_name(self):
-        return self.extraInfo
+        
         
     def get_sensors(self):
         return self.sensors

@@ -24,7 +24,7 @@ class Constellation:
             for uuid in self.constellation:
                 satellite = self.constellation[uuid]
                 dataMatrix = self.load_data_matrix(satellite.get_parsed_orbit_name())
-                sensorModel = self.load_sensor_model(satellite.get_parsed_sensor_name())
+                sensorModel = self.load_sensor_model(satellite.get_satellite_name())
                 satellite.set_data_matrix(dataMatrix)
                 satellite.set_sensors(sensorModel)
 
@@ -33,7 +33,7 @@ class Constellation:
             for uuid in uuids:
                 if uuid in self.constellation:
                     satellite = self.constellation[uuid]
-                    dataMatrix = self.load_data_matrix(satellite.get_satellite_name())
+                    dataMatrix = self.load_data_matrix(satellite.get_parsed_orbit_name())
                     sensorModel = self.load_sensor_model(satellite.get_satellite_name())
                     satellite.set_data_matrix(dataMatrix)
                     satellite.set_sensors(sensorModel)
@@ -60,8 +60,7 @@ class Constellation:
         
    # Creates a memmap to read parsed satellite data. Note that this function assumes the parser
    # has already been ran by itself.
-    def load_data_matrix(self, satName):
-        filename = 'parsed_' + satName + '.npy'
+    def load_data_matrix(self, filename):
         if filename in os.listdir(self.parsed_datapath):
             matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
         else:
@@ -72,7 +71,7 @@ class Constellation:
         
     def load_sensor_model(self, satName):
         filename = 'sensor_parsed_' + satName + '.json'
-        with open(parsed_datapath + filename, "w") as sensor_json:
+        with open(parsed_datapath + filename, "r") as sensor_json:
                 sensorModel = json.load(sensor_json)       
         return sensorModel
 
