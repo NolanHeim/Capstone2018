@@ -22,12 +22,44 @@ class Sensor:
         self.polarRadius = 6356752.3 #m
         self.EARTH_RADIUS = 6371000.0 #m
 
-
+    def sensors_intersection(self, satelliteData, sensors, mission, Npoly, delta_t):
+        sensorType = mission.get_sensor_type()
+        booleanTimes = False
+        if(sensorType == ''):
+            #Cycle through all sensors
+            for sensor in sensors:
+                booleanTimeSensor = single_sensor_intersection(satelliteData, sensor, Npoly, delta_t)
+                booleanTimes = booleanTimes | booleanTimeSensor
+        else:
+            for sensor in sensors:
+                if(sensor['Imaging Type'] == sensorType):
+                    booleanTimeSensor = single_sensor_intersection(satelliteData, sensor, Npoly, delta_t)
+                    booleanTimes = booleanTimes | booleanTimeSensor
+        
+        
+        listOfTimeWindows = time[booleanTimes]
+        rightBounds = np.where(np.diff(listOfTimeWindows) > delta_t)            
+        if(rightBounds[-1] != len(listOfTimeWindows)):
+            rightBounds = np.append(rightBounds, len(listOfTimeWindows))
+        if(rightBounds[0] == 0):
+            rightBounds = rightBounds[1:]
+            
+        leftBounds = np.array([0])
+        leftBounds = np.append(leftBounds, (rightBounds[:-1] + 1))
+            
+        #Using the left & right bounds for each point, I can construct the timing windows. 
+        timeWindows = []
+        for bound in range(0, len(rightBounds)):
+            timeWindows.append([leftBounds[bound], rightBounds[bound]])
+        
+        timeWindows = np.array(timeWindows)
+        
+        return timeWindows
 
     #Assumed Npoly of the form: [point1, point2, point3, point4] in ecef
     #Determines the intersection between the satellite and
     #the N-D polygon
-    def determineIntersection(self, satelliteData, sensor, Npoly, delta_t):
+    def single_sensor_intersection(self, satelliteData, sensor, Npoly, delta_t):
 
         
         epsilon = 0.1 #CURVATURE PARAMETER
@@ -64,24 +96,7 @@ class Sensor:
                 radiusFunction = m_d_rn - radius
                 booleanTimes = booleanTimes | (radiusFunction < 0)
         
-        listOfTimeWindows = time[booleanTimes]
-        rightBounds = np.where(np.diff(listOfTimeWindows) > delta_t)            
-        if(rightBounds[-1] != len(listOfTimeWindows)):
-            rightBounds = np.append(rightBounds, len(listOfTimeWindows))
-        if(rightBounds[0] == 0):
-            rightBounds = rightBounds[1:]
-            
-        leftBounds = np.array([0])
-        leftBounds = np.append(leftBounds, (rightBounds[:-1] + 1))
-            
-        #Using the left & right bounds for each point, I can construct the timing windows. 
-        timeWindows = []
-        for bound in range(0, len(rightBounds)):
-            timeWindows.append([leftBounds[bound], rightBounds[bound]])
-        
-        timeWindows = np.array(timeWindows)
-        
-        return timeWindows
+        return booleanTimes
 
 
             

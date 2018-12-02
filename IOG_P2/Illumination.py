@@ -55,9 +55,10 @@ class Illumination:
             solarAzimuth = np.arccos((-1.0)*(np.sin(radLat)*np.cos(solarZenith) - np.sin(decl))/
                             (np.cos(radLat)*np.sin(solarZenith)))
         
-        #Benchmark in degrees
-        #return [solarElevation*(180.0/np.pi), solarAzimuth*(180.0/np.pi)]
-        return [solarElevation, solarAzimuth]        
+        #Change to degrees
+        solarInclination = 90 + solarElevation*(180.0/np.pi)
+
+        return solarInclination     
         
     #Takes solarElevation as a numpy array as input.
     def computeSolarIrradiation(self, solarElevation):

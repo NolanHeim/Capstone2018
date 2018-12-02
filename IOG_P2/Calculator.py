@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from Sensor import *
+from Illumination import *
 from mpl_toolkits.mplot3d import Axes3D
 import datetime
 
@@ -34,6 +35,7 @@ class Calculator:
         self.epoch_index = 0
         self.uuid_index = 1
         self.sensor = Sensor()
+        self.illumination = Illumination()
     
     
     #Determines the imaging opportunities for a given satellite. 
@@ -43,13 +45,13 @@ class Calculator:
     def generate_imaging_opportunities(self, mission, constellation):
         #self.t0 = time.time()
         missionCoordinates = mission.get_coordinates()
-        position = np.array(missionCoordinates)
+        AOI = np.array(missionCoordinates)
 
         mission_interval_start = mission.get_interval_start_time()
         mission_interval_end = mission.get_interval_end_time()
 
         if(self.verbose):        
-            print(position)
+            print(AOI)
 
         timingWindows_Matrix = []
         satellites_list = []
@@ -61,7 +63,7 @@ class Calculator:
                 epoch = self.calc_epoch(sat.get_epoch())
                 dataMatrix = sat.get_data_matrix()
                 times = dataMatrix[:,0]
-
+                delta_t = times[1] = times[0]
                 data_interval_start = epoch
                 data_interval_end = epoch + datetime.timedelta(seconds=times[-1])
 
@@ -81,12 +83,26 @@ class Calculator:
                 if(self.verbose):            
                     print(trimmedMatrix.shape)
                 #Determine when satellite is above the horizon relative to position
+                #Centroid of AOI
+                centroidAOI = self.computeCentroid(AOI)
                 
-                [poly, timingWindows] = self.cubic_hermite_composite(trimmedMatrix, position, epoch)
+                [poly, reducedMatrix] = self.cubic_hermite_composite(trimmedMatrix, centroidAOI, epoch)
+                
                 #Determine when the satellite is in range of the desired solar angles
-
-                #Determine the intersection across all 'Optical' and/or 'SAR' sensor
+                solarInclinations = []
+                minSolarAngle = mission.get_min_solar_angle()
+                maxSolarAngle = mission.get_max_solar_angle()
+                reducedTime = reducedMatrix[:,0]
+                for t in reducedTime:
+                    solarInclination = self.illumination.computeSolarAngles(Lat, Long, t)
+                    solarInclinations.append(solarInclination)
+                solarInclinations = np.array(solarInclinations)
+                validSolarTimes = (solarInclinations > minSolarAngle) & (solarInclinations < maxSolarAngle)
+                solarReducedMatrix = reducedMatrix[validSolarTimes]
                 
+                #Determine the intersection across all 'Optical' and/or 'SAR' sensor
+                sensors = sat.get_sensors()
+                timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, AOI, delta_t)
                 
                 #might want to redfinie times here
     
@@ -111,6 +127,13 @@ class Calculator:
 
         return [timingWindows_Matrix, satellites_list]
 
+    def computeCentroid(AOI):
+        k = len(AOI)
+        sumPoints = np.array([0,0,0])
+        for point in AOI:
+            sumPoints = sumPoints + point
+        centroid = sumPoints/k
+        return centroid
 
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
         #t2 = time.time()        
@@ -313,14 +336,20 @@ class Calculator:
             print(len(polySlices))
        
         #Piecewise cubic hermite interpolating polynomial
-        timeWindows = self.create_time_windows(rootSlices, times, VF, epoch)
-
+        indexWindows = self.create_time_windows(rootSlices, times, VF, epoch)
+        
+        subsetData = data[0:0]
+        #Subset the original dataMatrix
+        for interval in indexWindows:
+            subsetData = np.append(subsetData, data[interval[0]:interval[1]])
+        
+        
         if(self.verbose):        
-            print(len(timeWindows))
+            print(len(indexWindows))
         
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
-        return [cubicHermitePoly, timeWindows]    
+        return [cubicHermitePoly, subsetMatrix]    
     
     
     def create_time_windows(self, roots, times, VF, epoch):
@@ -338,20 +367,21 @@ class Calculator:
         timingWindow = []
         startIndex = 0
         
-        rootsListUTC = self.seconds_2_utc(epoch, rootsList)
+        #rootsListUTC = self.seconds_2_utc(epoch, rootsList)
         
-        for i in range(0, len(rootsListUTC)):
-            rootsListUTC[i] = self.datetime_2_timestamp(rootsListUTC[i]) 
+        
+        #for i in range(0, len(rootsListUTC)):
+            #rootsListUTC[i] = self.datetime_2_timestamp(rootsListUTC[i]) 
        
         #print(len(rootsListUTC))        
         
         if(VF[0] > 0):  #then we are already in visibility range, so t0 to the first root is an interval
-            #timingWindow.append([0, rootsList[0]])
-            timingWindow.append([epoch, rootsListUTC[0]])
+            timingWindow.append([0, rootsList[0]])
+            #timingWindow.append([epoch, rootsListUTC[0]])
             startIndex = 1
         elif(VF[0] < 0):  #then we are not in visibility range, so the first root will be the start of an interval
-            #timingWindow.append([rootsList[0], rootsList[1]])
-            timingWindow.append([rootsListUTC[0], rootsListUTC[1]])
+            timingWindow.append([rootsList[0], rootsList[1]])
+            #timingWindow.append([rootsListUTC[0], rootsListUTC[1]])
             startIndex = 2
         else:            
             #It is zero at t = 0, check if star/end of window
@@ -363,35 +393,36 @@ class Calculator:
                 endrootIndex = 0
             
             if(VF[indexHalf] > 0):
-                #timingWindow = [0, rootsList[endrootIndex]]
-                timingWindow = [epoch, rootsListUTC[endrootIndex]]
+                timingWindow = [0, rootsList[endrootIndex]]
+                #timingWindow = [epoch, rootsListUTC[endrootIndex]]
                 startIndex = endrootIndex+1
             else:
                 timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
                 #timingWindow = [rootsListUTC[endrootIndex], rootsListUTC[endrootIndex+1]]
                 startIndex = endrootIndex+2
         
-#        endIndex = len(rootsList)+1
-        endIndex = len(rootsListUTC) - 1
+        endIndex = len(rootsList)+1
+        #endIndex = len(rootsListUTC) - 1
        
         for index in range(startIndex, endIndex, 2):
-            timingWindow.append([rootsListUTC[index], rootsListUTC[index+1]])
-
+            #timingWindow.append([rootsListUTC[index], rootsListUTC[index+1]])
+            timingWindow.append([rootsList[index], rootsList[index+1]])
         
         #Check to see if the roots form a closed set.
         
         if(range(startIndex, endIndex)[-1] == (endIndex-2)):          
             if(rootsList[-1] != times[-1]):
-                timingWindow.append([rootsListUTC[-1], self.datetime_2_timestamp(self.one_time_to_utc(epoch, times[-1]))])
-                #timingWindow.append([rootsListUTC[-1], times[-1]])
+                #timingWindow.append([rootsListUTC[-1], self.datetime_2_timestamp(self.one_time_to_utc(epoch, times[-1]))])
+                timingWindow.append([rootsListUTC[-1], times[-1]])
+    
+        #Now I need to convert all of the timingWindow times into their Index in time.
+        indexWindow = []
+        for interval in timingWindow:
+            sIndex = self.binary_List_Search(times, interval[0])
+            eIndex = self.binary_List_Search(times, interval[1])
+            indexWindow.append([sIndex, eIndex])
         
-        #if(self.verbose):
-        #for window in timingWindow:
-         #   print(window)
-        
-        #print("Time for creating timing windows = "+str(time.time() - t3))        
-        
-        return np.array(timingWindow)
+        return np.array(indexWindow)
     
     
     def compute_a5(self, hi, ViMinus, Vi, dViMinus, dViHalf, dVi):
