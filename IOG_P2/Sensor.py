@@ -14,71 +14,84 @@ import math
 from Calculator import *
 
 class Sensor:
+    #Should this be controlled by the satellite class?
+    #I.e. each sensor onboard the satellite initializes its own sensor class?
     
     def __init__(self):
-        self.start = True
-        self.calculator = Calculator()
         self.equitorialRadius = 6378137.0 #m
         self.polarRadius = 6356752.3 #m
-    
-    ####Need consistent satview rectangle points
-    ###[[lambda1, phi1],[lambda1,phi2],[lambda2,phi1],[lambda2,phi2]]
+        self.EARTH_RADIUS = 6371000.0 #m
+
+
+
+    #Assumed Npoly of the form: [point1, point2, point3, point4] in ecef
     #Determines the intersection between the satellite and
-    #the N-D polygon (assume arguments in geo & are numpy arrays)
-    def determineIntersection(self, satView, Npoly, satVel):
-        #Determine if all points are at one time within
-        #the viewing platform
+    #the N-D polygon
+    def determineIntersection(self, satelliteData, sensor, Npoly, delta_t):
+
         
+        epsilon = 0.1 #CURVATURE PARAMETER
+        #A smaller epsilon will result in a more conservative estimate. If epsilon is zero,
+        #The only solution is the centroid of the viewing area. (a point)
         
-        #Assuming Rectangle
-        #Centriod of satelliteView
-        #centriods = (satView[:,0,:] + satView[:,3,:])/2.0
+        viewingType = sensor['Dependent Rotation']        
+        time = satelliteData[:,0]
+        #A list of intersections times for every point on AOI
+        booleanTimes = False
+        if(viewingType == False):
+            #A rectangular viewing area
+            [rectangle, rArea] = self.viewing_rectangle(satelliteData, sensor)
+            for pointn in Npoly:
+                v0 = rectangle[0] - rn
+                v1 = rectangle[1] - rn
+                v2 = rectangle[2] - rn
+                v3 = rectangle[3] - rn
+        
+                area01 = self.computeTriangleArea(v0, v1)
+                area12 = self.computeTriangleArea(v1, v2)
+                area23 = self.computeTriangleArea(v2, v3)
+                area30 = self.computeTriangleArea(v3, v0)
+                
+                areaFunction = (area01 + area12 + area23 + area30) - (rArea*epsilon)
+                booleanTimes = booleanTimes | (areaFunction < 0)                
+
+        else:
+            #A circular viewing area
+            [centroid, radius] = self.viewing_circle(satelliteData, sensor)
+            for pointn in Npoly:
+                d_rn = centroid - rn
+                m_d_rn = np.sqrt(np.sum(d_rn*d_rn, axis=1))
+                radiusFunction = m_d_rn - radius
+                booleanTimes = booleanTimes | (radiusFunction < 0)
+        
+        listOfTimeWindows = time[booleanTimes]
+        rightBounds = np.where(np.diff(listOfTimeWindows) > delta_t)            
+        if(rightBounds[-1] != len(listOfTimeWindows)):
+            rightBounds = np.append(rightBounds, len(listOfTimeWindows))
+        if(rightBounds[0] == 0):
+            rightBounds = rightBounds[1:]
             
+        leftBounds = np.array([0])
+        leftBounds = np.append(leftBounds, (rightBounds[:-1] + 1))
             
-        #Construct Fn,ij -> Store in dictionaries
-        Fnij = {};
-        for npoint in range(0, Npoly.shape[0]):
-            vertex = Npoly[npoint]
+        #Using the left & right bounds for each point, I can construct the timing windows. 
+        timeWindows = []
+        for bound in range(0, len(rightBounds)):
+            timeWindows.append([leftBounds[bound], rightBounds[bound]])
+        
+        timeWindows = np.array(timeWindows)
+        
+        return timeWindows
+
+
             
-            ##NOW Need a function to determine the roots of these functions.
-            #Solution: Use the Cubic Hermite Polynomial
-            #Get the satellite path
-            #Trim the satellite data matrix
-            #Send information into 'cubic_hermite_composite'
-            #Get back the timing windows & polynomial handle
-            
-            #Trim the datamatrix for the satellite to only contain the 
-            #timing windows.            
-            
-            #This code needs the trimmed data matrixes for satView.
-            D01 = self.getMagnitude(satView[0] - satView[1])
-            D02 = self.getMagnitude(satView[0] - satView[2])
-            D13 = self.getMagnitude(satView[1] - satView[3])
-            D23 = self.getMagnitude(satView[2] - satView[3])
-            
-            dn0 = self.getMagnitude(vertex - satView[0])
-            dn1 = self.getMagnitude(vertex - satView[0])
-            dn2 = self.getMagnitude(vertex - satView[0])
-            dn3 = self.getMagnitude(vertex - satView[0])
-            
-            Fnij[npoint] = {}
-            Fnij[npoint]['01'] = dn0 + dn1 - D01 
-            Fnij[npoint]['02'] = dn0 + dn2 - D02
-            Fnij[npoint]['13'] = dn1 + dn3 - D13
-            Fnij[npoint]['23'] = dn2 + dn3 - D23            
-            
-            #Now need to apply the cubic hermite to each of the timing windows.
-            #We shall have to see how this goes to determine if we keep use the C.H.P
-            #for this part.
-            
-            #Basically take cubic_hermite_composite(timingData, vertex, epoch)
-            #Get back a polynomial for the vertex & it's timing window.
-            
-        #Stitch all of the timing windows together.
-            
-            
-            
-            
+    def computeTriangleArea(self, vec1, vec2):
+        crossProduct = np.cross(vec1, vec2)
+        magnitude = np.sqrt(np.sum(crossProduct*crossProduct, axis=1))
+        triangleArea = (0.5)*magnitude
+        return triangleArea
+        
+                 
     def geo_to_ecef(self, lat, lon, alt):
         a = self.equitorialRadius
         b = self.polarRadius
@@ -131,51 +144,141 @@ class Sensor:
     def getMagnitude(self, vec):
         return np.sqrt(np.sum(vec, axis=1)) 
         
-        
+    
+    #Returns the for corners of the viewing rectangle in ECEF
     def viewing_rectangle(self, satelliteData, sensor):
+        #These will need different definitions
+        #In RADIANS OR DEGREES?
+        #Im taking them as in Radians
+        dphi_h = sensor["dphi_h"]
+        dphi_v = sensor["dphi_v"]        
         
-        
+        [centroid, d_centroid, h_unit, v_unit] = self.determineCentroid(satelliteData, sensor)
 
-
-    def rectangle_center(self, satelliteData, sensor):
-        #assume these are in radians        
-        phi_h = sensor.get("phi_h")
-        phi_v = sensor.get("phi_v")
-        d_phi_h = sensor.get("d_phi_h")
-        d_phi_v = sensor.get("d_phi_v")
+        #Need to construct the viewing rectangle
+        #Determine the projection of dphi onto plane
+        deltah = d_centroid*np.tan(dphi_h)
+        deltav = d_centroid*np.tan(dphi_v)
         
-        positions = satelliteData[:][1:4]
-        velocities = satelliteData[:][4:7]
+        point1 = centroid - h_unit*deltah - v_unit*deltav
+        point2 = centroid - h_unit*deltah + v_unit*deltav
+        point3 = centroid + h_unit*detlah + v_unit*deltav
+        point4 = centroid + h_unit*deltah - v_unit*deltav
         
-        #these are in degrees (or degrees/sec)
-        [lat, lon, alt] = self.ecef_to_geo(positions)
-        [v_lat, v_lon, v_alt] = self.ecef_to_geo(velocities)
+        ##
+        # |2 3|
+        # |1 4|
+        ##
+        rectangle = [point1, point2, point3, point4]
+        rArea = (2*deltah)*(2*deltav)        
         
-        #in radians
-        psi_h = self.get_psi(phi_h, alt)
-        psi_v = self.get_psi(phi_v, alt)
-        d_psi_h = self.get_psi(d_phi_h, alt)
-        d_psi_v = self.get_psi(d_phi_v, alt)
+        return [rectangle, rArea]
         
-        #angle between psi space and actual space (in radians)
-        xi = np.atan2(v_lat/v_lon)
+    def determineCentroid(self, satelliteData, sensor):     
+        #These will need different definitions
+        #In RADIANS OR DEGREES?
+        #Im taking them as in Radians
+        phi_h = sensor["phi_h"]
+        phi_v = sensor["phi_v"]
         
-        #rotate the center point of the viewing rectangle by -xi
-        tau = np.cos(xi)*psi_h + np.sin(xi)*psi_v
-        omega = -np.sin(xi)*psi_h + np.cos(xi)*psi_v
+        r_sat = satelliteData[:,1:4]
+        #Assume a constant distance from the center of the earth
+        m_r_sat = np.sqrt(np.power(r_sat[:,0], 2.0) + np.power(r_sat[:,1], 2.0) + np.power(r_sat[:,2], 2.0))
+        m_r_sat_avg = np.average(m_r_sat)
+        v_sat = satelliteData[:,4:7]
         
-        d_lat = 
-        #construct four points
-        #call them tau (psi_h) and omega (psi_v)         
-        #tau1 = psi_h - d_psi_h
-        #tau2 = psi_h + d_psi_h
-        #omega1 = psi_v - d_psi_v
-        #omega2 = psi_v + d_psi_v
+        a = m_r_sat_avg - self.EARTH_RADIUS 
+        #Part 1: Determine the distance along the centroid vector to the earth's surface
+        #Step 1: Determine Alpha
+        dv = a*np.tan(phi_v)
+        dh = a*np.tan(phi_h)
+        alpha = np.sqrt(np.power(dv, 2.0) + np.power(dh, 2.0))/a
+        #Step 2: Determine the total length of the centroid distance (l)
+        theta = np.arcsin(self.EARTH_RADIUS/m_r_sat_avg)
+        lPrime = m_r_sat_avg*np.cos(theta)
+        l = lPrime/np.cos(theta - alpha)
+        #Step 3: Determine distance along centroid vector (dCent)
+        k = np.sqrt(np.power(l, 2.0) + np.power(m_r_sat_avg, 2.0) - 2.0*l*m_r_sat_avg*np.cos(alpha))
+        beta = np.pi - ((np.pi/2) - (theta - alpha))
+        gamma = np.arcsin((k*np.sin(beta))/(self.EARTH_RADIUS))
+        delta = np.pi - beta - gamma
+        c = np.sqrt(np.power(k, 2.0) + np.power(self.EARTH_RADIUS, 2.0) - 2*k*self.EARTH_RADIUS*cos(delta))
+        dCent = (l-c)
         
-        d_lat_rad_1 = np.cos(xi)*tau_1 +   
-        d_lat_rad_2 = np.cos(tau2)
-        d_lon_rad_1 = 
-        d_lon_rad_2 = 
+        #Determine the orthogonal unit vector (h_unit)
+        m_r_sat = np.sqrt(np.sum(r_sat*r_sat, axis=1))
+        r_unit_sat = r_sat/m_r_sat[:,None]
+        m_v_sat = np.sqrt(np.sum(v_sat*v_sat, axis=1))
+        v_unit = v_sat/m_v_sat[:,None]
+        
+        h_vec = np.cross(r_unit_sat, v_unit)
+        m_h_vec = np.sqrt(np.sum(h_vec*h_vec, axis=1))
+        h_unit = h_vec/m_h_vec[:,None]     
+        
+        #Part 2: Determine the unit vector for the centroid point from satellite
+        rotVCent = self.computeRotation(phi_v, phi_h, h_unit, v_unit, (-1)*r_sat)
+        m_rotVCent = np.sqrt(np.sum(rotVCent*rotVCent, axis=1))
+        unit_cent_sat = rotVCent/m_rotVCent[:,None]
+        
+        #Part 3: Determine the vector for the centroid point from the origin of ECEF
+        cent_sat = unit_cent_sat*dCent
+        #Determine the point on the earth corresponding to the centroid in ECEF
+        cent_ecef = r_sat + cent_sat
+        
+        return [cent_ecef, dCent, h_unit, v_unit]
+    
+    def computeRotation(self, phi_v, phi_h, h_unit, v_unit, vec):
+            
+        vRot = self.arbitraryRotationMatrix(phi_v, h_unit)
+        hRot = self.arbitraryRotationMatrix(phi_h, v_unit)
+        
+        #Define the new rotational Matrix (vRot*hRot)
+        fRot = np.zeros(9)
+        #Row 0         
+        fRot[0] = vRot[0]*hRot[0] + vRot[1]*hRot[3] + vRot[2]*hRot[6]
+        fRot[1] = vRot[0]*hRot[1] + vRot[1]*hRot[4] + vRot[2]*hRot[7]
+        fRot[2] = vRot[0]*hRot[2] + vRot[1]*hRot[5] + vRot[2]*hRot[8]
+        #Row 1
+        fRot[3] = vRot[3]*hRot[0] + vRot[4]*hRot[3] + vRot[5]*hRot[6]
+        fRot[4] = vRot[3]*hRot[1] + vRot[4]*hRot[4] + vRot[5]*hRot[7]
+        fRot[5] = vRot[3]*hRot[2] + vRot[4]*hRot[5] + vRot[5]*hRot[8]
+        #Row 2
+        fRot[6] = vRot[6]*hRot[0] + vRot[7]*hRot[3] + vRot[8]*hRot[6]
+        fRot[7] = vRot[6]*hRot[1] + vRot[7]*hRot[4] + vRot[8]*hRot[7]
+        fRot[8] = vRot[6]*hRot[2] + vRot[7]*hRot[5] + vRot[8]*hRot[8]
+        
+        #Comput the unit vector for the given vector (vec)
+        rotVec = np.zeros(3)
+        rotVec[0] = vec[0]*fRot[0] + vec[1]*fRot[1] + vec[2]*fRot[2]
+        rotVec[1] = vec[0]*fRot[3] + vec[1]*fRot[4] + vec[2]*fRot[5]
+        rotVec[2] = vec[0]*fRot[6] + vec[1]*fRot[7] + vec[2]*fRot[8]
+            
+        return rotVec
+            
+    #Returns the elements for a rotational matrix for
+    # a rotational about an arbitrary axis (u) and angle (a)
+    #   | 0 1 2 |
+    #   | 3 4 5 |
+    #   | 6 7 8 |
+    def arbitraryRotationMatrix(self, a, u):
+        ux = u[:,0]
+        uy = u[:,1]
+        uz = u[:,2]
+        rotationMatrix = np.zeros(9)
+        #Row 0
+        rotationMatrix[0] = np.cos(a) + np.power(ux, 2.0)*(1-np.cos(a))
+        rotationMatrix[1] = ux*uy*(1-np.cos(a)) - uz*np.sin(a)
+        rotationMatrix[2] = ux*uz*(1-np.cos(a)) + uy*np.sin(a)
+        #Row 1
+        rotationMatrix[3] = uy*ux*(1-np.cos(a)) + uz*np.sin(a)
+        rotationMatrix[4] = cos(a) + np.power(uy, 2.0)*(1-np.cos(a))
+        rotationMatrix[5] = uy*uz*(1-np.cos(a)) - ux*np.sin(a)
+        #Row 2       
+        rotationMatrix[6] = uz*ux*(1-np.cos(a)) - uy*np.sin(a)
+        rotationMatrix[7] = uz*uy*(1-np.cos(a)) + ux*np.sin(a)
+        rotationMatrix[8] = cos(a) + np.power(uz, 2.0)*(1-np.cos(a))
+                
+        return rotationMatrix
         
                 
     def get_psi(self, phi, altitude):
@@ -185,4 +288,14 @@ class Sensor:
 
         
         
-    def viewing_circle():
+    def viewing_circle(self, satelliteData, sensor):
+        #Get the centroid of the viewing circle on earth
+        dphi_c = sensor['dphi_c']
+        [centroid, dCentroid, h_unit, v_unit] = self.determineCentroid(satelliteData, sensor)
+        
+        #Now determine the radius of the circle
+        radius = dCentroid*np.tan(dphi_c)
+
+        return [centroid, radius]        
+        
+        

@@ -13,6 +13,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from Sensor import *
 from mpl_toolkits.mplot3d import Axes3D
 import datetime
 
@@ -32,10 +33,13 @@ class Calculator:
         self.RataDieJDtime = 1721424.5 #Days
         self.epoch_index = 0
         self.uuid_index = 1
+        self.sensor = Sensor()
     
     
-    #Returns the cubic Hermite polynomial function on the
-    #subinterval [subt1,subt2]
+    #Determines the imaging opportunities for a given satellite. 
+    #Reduces the overall satellite orbit by constraining it to be over the horizon
+    #relative to the centroid of the AOI, then reduces it based on the deisred
+    #solar angles. Finally determines the AOI intersection with the viewing area across each sensor.
     def generate_imaging_opportunities(self, mission, dataMatrices, extraInfoMatrix):
         #self.t0 = time.time()
         missionCoordinates = mission.get_coordinates()
@@ -76,9 +80,14 @@ class Calculator:
                 
                 if(self.verbose):            
                     print(trimmedMatrix.shape)
-    
+                #Determine when satellite is above the horizon relative to position
+                
                 [poly, timingWindows] = self.cubic_hermite_composite(trimmedMatrix, position, epoch)
-    
+                #Determine when the satellite is in range of the desired solar angles
+
+                #Determine the intersection across all 'Optical' and/or 'SAR' sensor
+                
+                
                 #might want to redfinie times here
     
                 if(self.plot):
