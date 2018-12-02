@@ -358,8 +358,8 @@ class Calculator:
                 timingWindow = [epoch, rootsListUTC[endrootIndex]]
                 startIndex = endrootIndex+1
             else:
-                timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
-                #timingWindow = [rootsListUTC[endrootIndex], rootsListUTC[endrootIndex+1]]
+                #timingWindow = [rootsList[endrootIndex], rootsList[endrootIndex+1]]
+                timingWindow = [rootsListUTC[endrootIndex], rootsListUTC[endrootIndex+1]]
                 startIndex = endrootIndex+2
         
 #        endIndex = len(rootsList)+1
