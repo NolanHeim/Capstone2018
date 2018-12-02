@@ -36,20 +36,10 @@ class Mission_Creator_REST:
         t0 = time.time()
 
         mission = self.create_mission_from_json(input_json, uuid)
-        
-        #if (mission.check_params() == False):
-         #   return "ERR"
-        
-        #mission.display_parameters()
-        
+                
         #this should be a list of a list of windows: where the first list corresponds to satellites,
         #and the list within it to the windows
         [windows_per_sat, sats] = self.calculator.generate_imaging_opportunities(mission, dataMatrices, extraInfoMatrix)
-
-        #print(len(windows_per_sat))
-        #print(sats)
-        #print(len(windows_per_sat[0]))
-        #print(windows_per_sat[0])
 
         opportunity_jsons = []
         for i in range(0, len(sats)):
@@ -67,29 +57,36 @@ class Mission_Creator_REST:
         deltaT = t1-t0
         print('Total Time: ' + str(deltaT))
         
-        #print(opportunity_jsons)        
-        
         return opportunity_jsons
 
 
     #makes a mission object based on the queried visibility search input json
     def create_mission_from_json(self, input_json, uuid):
-        #print(json.dumps(input_json))
-        #print("making dictionary")
         input_dict = input_json
-        print(input_dict)
-        targetCoordinates = input_dict.get("Target", "")
-        print(targetCoordinates)
+        targetCoordinates = input_dict.get("TargetArea", "")
         name = str(uuid)
         startTime = input_dict.get("POI", "").get("startTime", "")
         endTime = input_dict.get("POI", "").get("endTime", "")
         
-        if("PlatformID" in input_dict):
+        if("SensorID" in input_dict):
             idsToConsider = input_dict.get("PlatformID")
         else:
             idsToConsider = []
-            
-        mission = Mission(targetCoordinates, name, "", "", 0, startTime, endTime, idsToConsider)
+        
+        if("Filter" in input_dict):
+            if("SolarAngles" in input_dict.get("Filter")):
+                minSolarAngle = input_dict.get("Filter").get("SolarAngles").get("MinimumIncidenceAngle")
+                maxSolarAngle = input_dict.get("Filter").get("SolarAngles").get("MaximumIncidenceAngle")
+            else:
+                minSolarAngle = 0.0
+                maxSolarAngle = 180.0
+            if("SensorType" in input_dict.get("Filter")):
+                sensorType = input_dict.get("Filter").get("SensorType")
+            else:
+                sensorType = ""
+                    
+        mission = Mission(targetCoordinates, name, sensorType, startTime, endTime, 
+                          idsToConsider, minSolarAngle, maxSolarAngle)
         return mission        
 
 

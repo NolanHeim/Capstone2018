@@ -13,13 +13,13 @@ import datetime
 
 class Mission:
     
-    def __init__(self, targetCoordinates, name, sensorType, illumDir, illumThresh, 
-                 intervalStart, intervalEnd, idsToConsider):
+    def __init__(self, targetCoordinates, name, sensorType, intervalStart, intervalEnd, 
+                 idsToConsider, minSolarAngle, maxSolarAngle):
         self.targetCoordinates = targetCoordinates
         self.name = name
         self.sensorType = sensorType
-        self.illumDir = illumDir
-        self.illumThresh = illumThresh
+        self.minSolarAngle = minSolarAngle
+        self.maxSolarAngle = maxSolarAngle
         self.intervalStart = intervalStart
         self.intervalEnd = intervalEnd
         self.idsToConsider = idsToConsider
@@ -54,26 +54,6 @@ class Mission:
                                              endHour, endMinute, endSec)
         
         
-        #startTime = self.intervalStart.split()
-        #startTime[1] = startTime[1].replace("GMT", "")
-        #endTime = self.intervalEnd.split()
-        #endTime[1] = endTime[1].replace("GMT","")
-        #start_mmddyyyy = startTime[0].split('.')
-        #start_hhmmss = startTime[1].split(':')
-        #end_mmddyyyy = endTime[0].split('.')
-        #end_hhmmss = endTime[1].split(':')
-        
-        #start_mmddyyyy = [int(i) for i in start_mmddyyyy]        
-        #start_hhmmss = [int(i) for i in start_hhmmss]
-        #end_mmddyyyy = [int(i) for i in end_mmddyyyy]        
-        #end_hhmmss = [int(i) for i in end_hhmmss]        
-
-        #self.startDateTime = datetime.datetime(start_mmddyyyy[2], start_mmddyyyy[0], start_mmddyyyy[1], 
-        #                                       start_hhmmss[0], start_hhmmss[1], start_hhmmss[2])
-        #self.endDateTime = datetime.datetime(end_mmddyyyy[2], end_mmddyyyy[0], end_mmddyyyy[1], 
-        #                                       end_hhmmss[0], end_hhmmss[1], end_hhmmss[2])
-        
-
     def get_name(self):
         return self.name
     
@@ -87,12 +67,12 @@ class Mission:
         return self.sensorType
         
     
-    def get_illumination_direction(self):
-        return self.illumDir
+    def get_min_solar_angle(self):
+        return self.minSolarAngle
         
         
-    def get_illumination_threshold(self):
-        return self.illumThresh
+    def get_max_solar_angle(self):
+        return self.maxSolarAngle
         
         
     def get_interval_start_time(self):
@@ -113,7 +93,7 @@ class Mission:
         
     def check_params(self):
         if (self.targetCoordinates == [] or self.name == "" or self.intervalEnd == ""
-        or self.intervalStart == "" or self.sensorType == ""):
+        or self.intervalStart == ""):
             return False
         else:
             return True
