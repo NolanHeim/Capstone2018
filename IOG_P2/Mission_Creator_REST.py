@@ -36,25 +36,24 @@ class Mission_Creator_REST:
     def generate_imaging_opportunities(self, input_json, uuid):
 
         t0 = time.time()
-        print("in MC")
+        #print("in MC")
 
         mission = self.create_mission_from_json(input_json, uuid)
-        print("mission made")
+        #print("mission made")
 
         ## Constellation add all mission satellite UUID's not already in.
         if (mission.check_params() == False):
             return "ERR"
 
-        print("got passed check params")
+        #print("got passed check params")
         uuid_list = mission.get_ids_to_consider()
         self.constellation.add_satellite_data(uuid_list)
         
-        print("satellites added")
+        #print("satellites added")
         #this should be a list of a list of windows: where the first list corresponds to satellites,
         #and the list within it to the windows
         [windows_per_sat, sats] = self.calculator.generate_imaging_opportunities(mission, self.constellation)
 
-        print("out of calc")
 
         opportunity_jsons = []
         for i in range(0, len(sats)):
@@ -81,12 +80,12 @@ class Mission_Creator_REST:
     def create_mission_from_json(self, input_json, uuid):
         input_dict = input_json
         targetCoordinates = input_dict.get("TargetArea", "")
-        print("got area")
+        #print("got area")
         name = str(uuid)
         startTime = input_dict.get("POI", "").get("startTime", "")
         endTime = input_dict.get("POI", "").get("endTime", "")
         
-        print("got POI")
+        #print("got POI")
         if("SensorID" in input_dict):
             idsToConsider = input_dict.get("PlatformID")
         else:
@@ -104,7 +103,7 @@ class Mission_Creator_REST:
                 sensorType = input_dict.get("Filter").get("SensorType")
             
                     
-        print("got filter")
+        #print("got filter")
         mission = Mission(targetCoordinates, name, sensorType, startTime, endTime, 
                           idsToConsider, minSolarAngle, maxSolarAngle)
         return mission        

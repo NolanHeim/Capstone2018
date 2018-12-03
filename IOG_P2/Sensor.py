@@ -39,17 +39,13 @@ class Sensor:
                     booleanTimeSensor = single_sensor_intersection(satelliteData, sensor, Npoly, delta_t)
                     booleanTimes = booleanTimes | booleanTimeSensor
         
-        print(time)
         booleanTimes = np.array(booleanTimes)
-        listOfTimeWindows = time[booleanTimes]
-        print(listOfTimeWindows)        
+        listOfTimeWindows = time[booleanTimes]     
+
         boundCondition = np.diff(listOfTimeWindows) > delta_t
-        print(delta_t)
-        print(boundCondition)
-        rightBounds = np.where(boundCondition)            
-        print(rightBounds[0])
-        if(rightBounds[-1] != len(listOfTimeWindows)):
-            rightBounds = np.append(rightBounds, len(listOfTimeWindows))
+        rightBounds = (np.argwhere(boundCondition).T)[0]
+        if(rightBounds[-1] != len(listOfTimeWindows)-1):
+            rightBounds = np.append(rightBounds, len(listOfTimeWindows)-1)
         if(rightBounds[0] == 0):
             rightBounds = rightBounds[1:]
             
@@ -58,11 +54,10 @@ class Sensor:
             
         #Using the left & right bounds for each point, I can construct the timing windows. 
         timeWindows = []
-        print(leftBounds)
-        print(rightBounds)
         for bound in range(0, len(rightBounds)):
-            timeWindows.append([leftBounds[bound], rightBounds[bound]])
-        
+            timeWindows.append([listOfTimeWindows[leftBounds[bound]], 
+                                listOfTimeWindows[rightBounds[bound]]])
+ 
         timeWindows = np.array(timeWindows)
         
         return timeWindows
@@ -73,39 +68,28 @@ class Sensor:
     def single_sensor_intersection(self, satelliteData, sensor, Npoly, delta_t):
 
         
-        epsilon = 11.1 #CURVATURE PARAMETER
+        epsilon = 1.1 #CURVATURE PARAMETER
         #A smaller epsilon will result in a more conservative estimate. If epsilon is zero,
         #The only solution is the centroid of the viewing area. (a point)
-        print(sensor)
         viewingType = sensor['Angle Dependent']        
-        time = satelliteData[:,0]
+        #time = satelliteData[:,0]
         #A list of intersections times for every point on AOI
         booleanTimes = False
         if(viewingType == "False"):
             #A rectangular viewing area
             [rectangle, rArea] = self.viewing_rectangle(satelliteData, sensor)        
-            #print(rectangle)
             for rn in Npoly:
                 v0 = rectangle[0] - rn
                 v1 = rectangle[1] - rn
                 v2 = rectangle[2] - rn
                 v3 = rectangle[3] - rn
-                    
-                #print(v0)
-                #print(v1)
-                #print(v2)
-                #print(v3)
         
                 area01 = self.computeTriangleArea(v0, v1)
                 area12 = self.computeTriangleArea(v1, v2)
                 area23 = self.computeTriangleArea(v2, v3)
                 area30 = self.computeTriangleArea(v3, v0)
                 
-                areaFunction = (area01 + area12 + area23 + area30) - (rArea*epsilon)
-                #print(areaFunction)
-                #fig,ax = plt.subplots()
-                #ax.plot(time, areaFunction)
-                #plt.show()                
+                areaFunction = (area01 + area12 + area23 + area30) - (rArea*epsilon)               
 
                 booleanTimes = booleanTimes | (areaFunction < 0)                
 
@@ -334,14 +318,10 @@ class Sensor:
     def viewing_circle(self, satelliteData, sensor):
         #Get the centroid of the viewing circle on earth
         dphi_c = sensor['Rotation']*(np.pi)/180
-        print(sensor["Rotation"])
-        print(sensor["Angle Dependent"])
         [centroid, dCentroid, h_unit, v_unit] = self.determineCentroid(satelliteData, sensor)
         
         #Now determine the radius of the circle
         radius = dCentroid*np.tan(dphi_c)
-        
-        print(radius)
 
         return [centroid, radius]        
         
