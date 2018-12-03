@@ -78,24 +78,32 @@ class Parser:
             JDLine = fileLines[JDateIndex].split()
             jDate = float(JDLine[-1])
             
-            satelliteID = uuid.uuid4()        
+            satelliteID = str(uuid.uuid4())        
             satelliteName = os.path.splitext(filename)[0]
-            #self.updateDatabase(satelliteName, satelliteID, parsed_datapath)
-        
+            
             dataStartIndex = fileLines.index('EphemerisTimePosVel') + 1
             dataStopIndex = fileLines.index('END Ephemeris') - 1
             dataMatrix = [[float(i) for i in fileLines[j].split()] for j in range(dataStartIndex,dataStopIndex)]
             
             parsed_dataFile = os.path.join(parsed_datapath, 'parsed_'+satelliteName)
-            extraInfoFile = os.path.join(parsed_datapath, 'ex_parsed_'+satelliteName)
+            extraInfoFileName = os.path.join(parsed_datapath, 'ex_parsed_'+satelliteName)
             
             extraInfo = [jDate, satelliteID, satelliteName, parsed_dataFile]            
+            extraInfo = {}
+            extraInfo["jDate"] = jDate
+            extraInfo["satelliteID"] = satelliteID
+            extraInfo["satelliteName"] = satelliteName
+            extraInfo["parsed_dataFile"] = 'parsed_'+satelliteName+'.npy'
+
+            with open(extraInfoFileName+".json", "w") as extraInfoFile:
+                extraInfoFile.write(json.dumps(extraInfo))
+        
             
             data = np.array(dataMatrix)
             np.save(parsed_dataFile, data)
             
-            extra = np.array(extraInfo)
-            np.save(extraInfoFile, extra)
+            #extra = np.array(extraInfo)
+            #np.save(extraInfoFile, extra)
 
 
     # parses the sensor data for each satellite
@@ -260,5 +268,5 @@ class Parser:
 # Code that runs the parser as standalone. This just parses and stores satellite data. 
 if __name__ == "__main__":
     parser = Parser('../../Data/Orbit/', '../../Data/Sensor/')
-    parser.parse_sensor_data('../../Parsed Data/')
+    parser.parse_data('../../Parsed Data/')
 

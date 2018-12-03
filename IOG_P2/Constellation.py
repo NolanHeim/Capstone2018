@@ -9,6 +9,9 @@
 # Written by Jordan Jones and Nolan Heim
 #
 from Satellite import *
+import numpy as np
+import os
+import json
 
 class Constellation:    
     def __init__(self, parsed_datapath):
@@ -47,13 +50,14 @@ class Constellation:
         
     def get_satellite_list(self):
         satList = [];
-        for satellite in self.constellation:
-            satList.append(satellite)
+        for uuid in self.constellation:
+            satList.append(self.constellation[uuid])
         return satList
 
     
     def construct_satellites(self):
-        for row in self.extraInfoMatrix:
+        for ei in self.extraInfoMatrix:
+            row = [ei["jDate"], ei["satelliteID"], ei["satelliteName"], ei["parsed_dataFile"]]
             sat = Satellite(row)
             self.constellation[sat.get_uuid] = sat
 
@@ -61,8 +65,11 @@ class Constellation:
    # Creates a memmap to read parsed satellite data. Note that this function assumes the parser
    # has already been ran by itself.
     def load_data_matrix(self, filename):
-        if filename in os.listdir(self.parsed_datapath):
-            matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
+        file_with_extension = filename
+        print(file_with_extension)
+        if file_with_extension in os.listdir(self.parsed_datapath):
+            matrix = np.load(self.parsed_datapath+file_with_extension, mmap_mode='r')
+            print("we found the orbit file")
         else:
             matrix = 0
             
@@ -71,7 +78,7 @@ class Constellation:
         
     def load_sensor_model(self, satName):
         filename = 'sensor_parsed_' + satName + '.json'
-        with open(parsed_datapath + filename, "r") as sensor_json:
+        with open(self.parsed_datapath + filename, "r") as sensor_json:
                 sensorModel = json.load(sensor_json)       
         return sensorModel
 
@@ -80,8 +87,10 @@ class Constellation:
         ei_Matrices = []
 
         for filename in os.listdir(self.parsed_datapath):
-            if(filename[0] == 'e'):
-                matrix = np.load(self.parsed_datapath+filename, mmap_mode='r')
-                ei_Matrices.append(matrix)
+            if(filename[0] == 'e'):            
+                with open(self.parsed_datapath + filename, "r") as extra_info_json:
+                    extraInfoDict = json.load(extra_info_json)       
+        
+                ei_Matrices.append(extraInfoDict)
             
         return np.array(ei_Matrices)    

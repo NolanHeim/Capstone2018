@@ -62,31 +62,22 @@ class Mission_Creator_REST:
 
     #makes a mission object based on the queried visibility search input json
     def create_mission_from_json(self, input_json, uuid):
+        #print(json.dumps(input_json))
+        #print("making dictionary")
         input_dict = input_json
-        targetCoordinates = input_dict.get("TargetArea", "")
+        print(input_dict)
+        targetCoordinates = input_dict.get("Target", "")
+        print(targetCoordinates)
         name = str(uuid)
         startTime = input_dict.get("POI", "").get("startTime", "")
         endTime = input_dict.get("POI", "").get("endTime", "")
         
-        if("SensorID" in input_dict):
+        if("PlatformID" in input_dict):
             idsToConsider = input_dict.get("PlatformID")
         else:
             idsToConsider = []
-        
-        if("Filter" in input_dict):
-            if("SolarAngles" in input_dict.get("Filter")):
-                minSolarAngle = input_dict.get("Filter").get("SolarAngles").get("MinimumIncidenceAngle")
-                maxSolarAngle = input_dict.get("Filter").get("SolarAngles").get("MaximumIncidenceAngle")
-            else:
-                minSolarAngle = 0.0
-                maxSolarAngle = 180.0
-            if("SensorType" in input_dict.get("Filter")):
-                sensorType = input_dict.get("Filter").get("SensorType")
-            else:
-                sensorType = ""
-                    
-        mission = Mission(targetCoordinates, name, sensorType, startTime, endTime, 
-                          idsToConsider, minSolarAngle, maxSolarAngle)
+            
+        mission = Mission(targetCoordinates, name, "", "", 0, startTime, endTime, idsToConsider)
         return mission        
 
 

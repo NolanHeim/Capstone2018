@@ -57,13 +57,16 @@ class Calculator:
         satellites_list = []
 
         for sat in constellation.get_satellite_list():
+            
+            print(sat.get_satellite_name())
             #in the first case, every satellite will be considered
             #in the second case, a given satellite will only be considered if its uuid is in the list to consider for this mission
             if(mission.get_ids_to_consider() == [] or sat.get_uuid() in mission.get_ids_to_consider()):              
                 epoch = self.calc_epoch(sat.get_epoch())
                 dataMatrix = sat.get_data_matrix()
+                print(dataMatrix.shape)
                 times = dataMatrix[:,0]
-                delta_t = times[1] = times[0]
+                delta_t = times[1] - times[0]
                 data_interval_start = epoch
                 data_interval_end = epoch + datetime.timedelta(seconds=times[-1])
 
@@ -79,12 +82,13 @@ class Calculator:
                     print("End index: "+str(end_index))
                 
                 trimmedMatrix = dataMatrix[start_index:end_index]
-                
+                print(trimmedMatrix.shape)
                 if(self.verbose):            
                     print(trimmedMatrix.shape)
                 #Determine when satellite is above the horizon relative to position
                 #Centroid of AOI
-                centroidAOI = self.computeCentroid(AOI)
+                print(AOI)
+                centroidAOI = self.computeCentroid(np.array(AOI))
                 
                 [poly, reducedMatrix] = self.cubic_hermite_composite(trimmedMatrix, centroidAOI, epoch)
                 
@@ -92,17 +96,30 @@ class Calculator:
                 solarInclinations = []
                 minSolarAngle = mission.get_min_solar_angle()
                 maxSolarAngle = mission.get_max_solar_angle()
-                reducedTime = reducedMatrix[:,0]
-                for t in reducedTime:
-                    solarInclination = self.illumination.computeSolarAngles(Lat, Long, t)
+                print(reducedMatrix.shape)
+                reducedTime = np.array(reducedMatrix)[:,0]
+                
+                lat = centroidAOI[0]
+                lon = centroidAOI[1]
+                
+                reducedTimeUTC = self.seconds_2_utc(epoch, reducedTime)
+                t1 = time.time()
+                for t in reducedTimeUTC:
+                    solarInclination = self.illumination.computeSolarAngles(lat, lon, t)
                     solarInclinations.append(solarInclination)
+                    
+                t2 = time.time()
+                print(t2 - t1)
+
                 solarInclinations = np.array(solarInclinations)
                 validSolarTimes = (solarInclinations > minSolarAngle) & (solarInclinations < maxSolarAngle)
                 solarReducedMatrix = reducedMatrix[validSolarTimes]
                 
                 #Determine the intersection across all 'Optical' and/or 'SAR' sensor
                 sensors = sat.get_sensors()
-                timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, AOI, delta_t)
+                print(sensors)
+                AOI_ecef = self.geo_to_ecef(AOI[0], AOI[1], AOI[2])
+                timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI_ecef, delta_t)
                 
                 #might want to redfinie times here
     
@@ -127,7 +144,7 @@ class Calculator:
 
         return [timingWindows_Matrix, satellites_list]
 
-    def computeCentroid(AOI):
+    def computeCentroid(self, AOI):
         k = len(AOI)
         sumPoints = np.array([0,0,0])
         for point in AOI:
@@ -338,18 +355,22 @@ class Calculator:
         #Piecewise cubic hermite interpolating polynomial
         indexWindows = self.create_time_windows(rootSlices, times, VF, epoch)
         
+
         subsetData = data[0:0]
         #Subset the original dataMatrix
         for interval in indexWindows:
-            subsetData = np.append(subsetData, data[interval[0]:interval[1]])
+            #subsetData.append(data[interval[0]:interval[1]])
+            subsetData = np.append(subsetData, data[interval[0]:interval[1]], axis=0)
         
+        #subsetData = np.array(subsetData)
+        print(subsetData.shape)
         
         if(self.verbose):        
             print(len(indexWindows))
         
         cubicHermitePoly = lambda x: self.piecewise(x, conditionSlices, polySlices)
         #print(cubicHermitePoly([100,10000]))
-        return [cubicHermitePoly, subsetMatrix]    
+        return [cubicHermitePoly, subsetData]    
     
     
     def create_time_windows(self, roots, times, VF, epoch):
@@ -401,7 +422,10 @@ class Calculator:
                 #timingWindow = [rootsListUTC[endrootIndex], rootsListUTC[endrootIndex+1]]
                 startIndex = endrootIndex+2
         
-        endIndex = len(rootsList)+1
+        if (len(rootsList) % 2 == 1):
+            endIndex = len(rootsList)-1
+        else:
+            endIndex = len(rootsList)+1
         #endIndex = len(rootsListUTC) - 1
        
         for index in range(startIndex, endIndex, 2):
@@ -509,6 +533,7 @@ class Calculator:
                 - lon - np.arctan(p_unit[:,0]/p_unit[:,1] + 2*np.pi*m))
         
         return np.array(tInOut)
+        
         
     def seconds_2_utc(self, epoch, times):
         utc_times=[]

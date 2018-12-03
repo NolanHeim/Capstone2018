@@ -9,6 +9,8 @@
 # Written by Jordan Jones and Nolan Heim
 #
 
+import numpy as np
+
 class Satellite:  
     def __init__(self, extraInfo):
         self.epoch_index = 0       
@@ -33,15 +35,17 @@ class Satellite:
     
     def set_sensors(self, sensor_model): #sensor_model is a dictionary containing all sensor
         for sensor in sensor_model:
-            self.sensors.append(sensor) ##Need to update this.
+            self.sensors.append(sensor_model[sensor])
             
             
     def set_data_matrix(self, dataMatrix):
         self.dataMatrix = dataMatrix
+        print("we have been set")
+        print(np.array(dataMatrix).shape)
     
     
     def get_data_matrix(self):
-        return self.dataMatrix
+        return np.array(self.dataMatrix)
 
         
     def get_epoch(self):
@@ -52,7 +56,7 @@ class Satellite:
         return self.extraInfo['uuid']
 
         
-    def get_filename(self):
+    def get_satellite_name(self):
         return self.extraInfo['filename']
 
 

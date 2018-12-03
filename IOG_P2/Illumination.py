@@ -42,9 +42,9 @@ class Illumination:
         time_offset = eqtime + 4.0*Lon
         tst = time.hour*60.0 + time.minute + time.second/60.0 + time_offset
         ha = (tst/4.0) - 180.0
-        print(ha)
+        #print(ha)
         radLat = np.radians(Lat)
-        print(radLat)
+        #print(radLat)
         solarZenith = np.arccos(np.sin(radLat)*np.sin(decl) +
                         np.cos(radLat)*np.cos(decl)*np.cos(np.radians(ha)))
         solarElevation = (np.pi/2.0) - solarZenith

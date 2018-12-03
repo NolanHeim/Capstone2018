@@ -15,14 +15,17 @@ class Mission:
     
     def __init__(self, targetCoordinates, name, sensorType, intervalStart, intervalEnd, 
                  idsToConsider, minSolarAngle, maxSolarAngle):
+        print("in mision 1")
         self.targetCoordinates = targetCoordinates
         self.name = name
         self.sensorType = sensorType
-        self.minSolarAngle = minSolarAngle
-        self.maxSolarAngle = maxSolarAngle
+        self.minSolarAngle = float(minSolarAngle)
+        self.maxSolarAngle = float(maxSolarAngle)
         self.intervalStart = intervalStart
         self.intervalEnd = intervalEnd
         self.idsToConsider = idsToConsider
+
+        print("in mission")
 
         #Parse the start and end times here.
         #Save as datetimes.

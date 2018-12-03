@@ -12,6 +12,8 @@
 import numpy as np
 import math
 from Calculator import *
+import matplotlib.pyplot as plt
+import time as tm
 
 class Sensor:
     #Should this be controlled by the satellite class?
@@ -24,11 +26,12 @@ class Sensor:
 
     def sensors_intersection(self, satelliteData, sensors, mission, Npoly, delta_t):
         sensorType = mission.get_sensor_type()
+        time = np.array(satelliteData[:,0])
         booleanTimes = False
         if(sensorType == ''):
             #Cycle through all sensors
             for sensor in sensors:
-                booleanTimeSensor = single_sensor_intersection(satelliteData, sensor, Npoly, delta_t)
+                booleanTimeSensor = self.single_sensor_intersection(satelliteData, sensor, Npoly, delta_t)
                 booleanTimes = booleanTimes | booleanTimeSensor
         else:
             for sensor in sensors:
@@ -36,19 +39,27 @@ class Sensor:
                     booleanTimeSensor = single_sensor_intersection(satelliteData, sensor, Npoly, delta_t)
                     booleanTimes = booleanTimes | booleanTimeSensor
         
-        
+        print(time)
+        booleanTimes = np.array(booleanTimes)
         listOfTimeWindows = time[booleanTimes]
-        rightBounds = np.where(np.diff(listOfTimeWindows) > delta_t)            
+        print(listOfTimeWindows)        
+        boundCondition = np.diff(listOfTimeWindows) > delta_t
+        print(delta_t)
+        print(boundCondition)
+        rightBounds = np.where(boundCondition)            
+        print(rightBounds[0])
         if(rightBounds[-1] != len(listOfTimeWindows)):
             rightBounds = np.append(rightBounds, len(listOfTimeWindows))
         if(rightBounds[0] == 0):
             rightBounds = rightBounds[1:]
             
-        leftBounds = np.array([0])
-        leftBounds = np.append(leftBounds, (rightBounds[:-1] + 1))
+        leftBounds = np.array(rightBounds[:-1]) + 1
+        leftBounds = np.insert(leftBounds, 0, 0)
             
         #Using the left & right bounds for each point, I can construct the timing windows. 
         timeWindows = []
+        print(leftBounds)
+        print(rightBounds)
         for bound in range(0, len(rightBounds)):
             timeWindows.append([leftBounds[bound], rightBounds[bound]])
         
@@ -62,22 +73,28 @@ class Sensor:
     def single_sensor_intersection(self, satelliteData, sensor, Npoly, delta_t):
 
         
-        epsilon = 0.1 #CURVATURE PARAMETER
+        epsilon = 11.1 #CURVATURE PARAMETER
         #A smaller epsilon will result in a more conservative estimate. If epsilon is zero,
         #The only solution is the centroid of the viewing area. (a point)
-        
-        viewingType = sensor['Dependent Rotation']        
+        print(sensor)
+        viewingType = sensor['Angle Dependent']        
         time = satelliteData[:,0]
         #A list of intersections times for every point on AOI
         booleanTimes = False
-        if(viewingType == False):
+        if(viewingType == "False"):
             #A rectangular viewing area
-            [rectangle, rArea] = self.viewing_rectangle(satelliteData, sensor)
-            for pointn in Npoly:
+            [rectangle, rArea] = self.viewing_rectangle(satelliteData, sensor)        
+            #print(rectangle)
+            for rn in Npoly:
                 v0 = rectangle[0] - rn
                 v1 = rectangle[1] - rn
                 v2 = rectangle[2] - rn
                 v3 = rectangle[3] - rn
+                    
+                #print(v0)
+                #print(v1)
+                #print(v2)
+                #print(v3)
         
                 area01 = self.computeTriangleArea(v0, v1)
                 area12 = self.computeTriangleArea(v1, v2)
@@ -85,13 +102,18 @@ class Sensor:
                 area30 = self.computeTriangleArea(v3, v0)
                 
                 areaFunction = (area01 + area12 + area23 + area30) - (rArea*epsilon)
+                #print(areaFunction)
+                #fig,ax = plt.subplots()
+                #ax.plot(time, areaFunction)
+                #plt.show()                
+
                 booleanTimes = booleanTimes | (areaFunction < 0)                
 
         else:
             #A circular viewing area
             [centroid, radius] = self.viewing_circle(satelliteData, sensor)
             for pointn in Npoly:
-                d_rn = centroid - rn
+                d_rn = centroid - pointn
                 m_d_rn = np.sqrt(np.sum(d_rn*d_rn, axis=1))
                 radiusFunction = m_d_rn - radius
                 booleanTimes = booleanTimes | (radiusFunction < 0)
@@ -127,8 +149,12 @@ class Sensor:
     def ecef_to_geo(self, position):
         a = self.equitorialRadius
         b = self.polarRadius
+
+        x = position[0]
+        y = position[1]
+        z = position[2]        
         
-        lam = np.atan2(y,x)
+        lam = np.arctan2(y,x)
 
         e = np.sqrt(np.power(a,2.0)-np.power(b,2.0))/a
         p = np.sqrt(np.power(x,2.0)+np.power(y,2.0))
@@ -142,7 +168,7 @@ class Sensor:
         alt = p/cos_phi - N
         while abs(alt-alt_0) > 1.0e-6:
             alt_0 = alt
-            phi = np.atan2(z,p*(1.0-np.power(e,2.0)*N/(N+alt)))
+            phi = np.arctan2(z,p*(1.0-np.power(e,2.0)*N/(N+alt)))
             cos_phi = np.cos(phi)
             sin_phi = math.sin(phi)
             N = np.power(a,2.0)/np.sqrt(np.power(a*cos_phi,2.0)+np.power(b*sin_phi,2.0))
@@ -165,8 +191,8 @@ class Sensor:
         #These will need different definitions
         #In RADIANS OR DEGREES?
         #Im taking them as in Radians
-        dphi_h = sensor["dphi_h"]
-        dphi_v = sensor["dphi_v"]        
+        dphi_h = sensor["Rotation"][0]*(np.pi)/180
+        dphi_v = sensor["Rotation"][1]*(np.pi)/180        
         
         [centroid, d_centroid, h_unit, v_unit] = self.determineCentroid(satelliteData, sensor)
 
@@ -177,7 +203,7 @@ class Sensor:
         
         point1 = centroid - h_unit*deltah - v_unit*deltav
         point2 = centroid - h_unit*deltah + v_unit*deltav
-        point3 = centroid + h_unit*detlah + v_unit*deltav
+        point3 = centroid + h_unit*deltah + v_unit*deltav
         point4 = centroid + h_unit*deltah - v_unit*deltav
         
         ##
@@ -193,8 +219,8 @@ class Sensor:
         #These will need different definitions
         #In RADIANS OR DEGREES?
         #Im taking them as in Radians
-        phi_h = sensor["phi_h"]
-        phi_v = sensor["phi_v"]
+        phi_h = sensor["Orientation"][0]*(np.pi)/180
+        phi_v = sensor["Orientation"][1]*(np.pi)/180
         
         r_sat = satelliteData[:,1:4]
         #Assume a constant distance from the center of the earth
@@ -217,7 +243,7 @@ class Sensor:
         beta = np.pi - ((np.pi/2) - (theta - alpha))
         gamma = np.arcsin((k*np.sin(beta))/(self.EARTH_RADIUS))
         delta = np.pi - beta - gamma
-        c = np.sqrt(np.power(k, 2.0) + np.power(self.EARTH_RADIUS, 2.0) - 2*k*self.EARTH_RADIUS*cos(delta))
+        c = np.sqrt(np.power(k, 2.0) + np.power(self.EARTH_RADIUS, 2.0) - 2*k*self.EARTH_RADIUS*np.cos(delta))
         dCent = (l-c)
         
         #Determine the orthogonal unit vector (h_unit)
@@ -248,7 +274,7 @@ class Sensor:
         hRot = self.arbitraryRotationMatrix(phi_h, v_unit)
         
         #Define the new rotational Matrix (vRot*hRot)
-        fRot = np.zeros(9)
+        fRot = {}
         #Row 0         
         fRot[0] = vRot[0]*hRot[0] + vRot[1]*hRot[3] + vRot[2]*hRot[6]
         fRot[1] = vRot[0]*hRot[1] + vRot[1]*hRot[4] + vRot[2]*hRot[7]
@@ -263,12 +289,14 @@ class Sensor:
         fRot[8] = vRot[6]*hRot[2] + vRot[7]*hRot[5] + vRot[8]*hRot[8]
         
         #Comput the unit vector for the given vector (vec)
-        rotVec = np.zeros(3)
-        rotVec[0] = vec[0]*fRot[0] + vec[1]*fRot[1] + vec[2]*fRot[2]
-        rotVec[1] = vec[0]*fRot[3] + vec[1]*fRot[4] + vec[2]*fRot[5]
-        rotVec[2] = vec[0]*fRot[6] + vec[1]*fRot[7] + vec[2]*fRot[8]
-            
-        return rotVec
+        rotVec = {}
+        rotVec[0] = vec[:,0]*fRot[0] + vec[:,1]*fRot[1] + vec[:,2]*fRot[2]
+        rotVec[1] = vec[:,0]*fRot[3] + vec[:,1]*fRot[4] + vec[:,2]*fRot[5]
+        rotVec[2] = vec[:,0]*fRot[6] + vec[:,1]*fRot[7] + vec[:,2]*fRot[8]
+        
+        rotVecMatrix = np.column_stack((rotVec[0], rotVec[1], rotVec[2]))
+
+        return rotVecMatrix
             
     #Returns the elements for a rotational matrix for
     # a rotational about an arbitrary axis (u) and angle (a)
@@ -279,19 +307,19 @@ class Sensor:
         ux = u[:,0]
         uy = u[:,1]
         uz = u[:,2]
-        rotationMatrix = np.zeros(9)
+        rotationMatrix = {}
         #Row 0
         rotationMatrix[0] = np.cos(a) + np.power(ux, 2.0)*(1-np.cos(a))
         rotationMatrix[1] = ux*uy*(1-np.cos(a)) - uz*np.sin(a)
         rotationMatrix[2] = ux*uz*(1-np.cos(a)) + uy*np.sin(a)
         #Row 1
         rotationMatrix[3] = uy*ux*(1-np.cos(a)) + uz*np.sin(a)
-        rotationMatrix[4] = cos(a) + np.power(uy, 2.0)*(1-np.cos(a))
+        rotationMatrix[4] = np.cos(a) + np.power(uy, 2.0)*(1-np.cos(a))
         rotationMatrix[5] = uy*uz*(1-np.cos(a)) - ux*np.sin(a)
         #Row 2       
         rotationMatrix[6] = uz*ux*(1-np.cos(a)) - uy*np.sin(a)
         rotationMatrix[7] = uz*uy*(1-np.cos(a)) + ux*np.sin(a)
-        rotationMatrix[8] = cos(a) + np.power(uz, 2.0)*(1-np.cos(a))
+        rotationMatrix[8] = np.cos(a) + np.power(uz, 2.0)*(1-np.cos(a))
                 
         return rotationMatrix
         
@@ -305,11 +333,15 @@ class Sensor:
         
     def viewing_circle(self, satelliteData, sensor):
         #Get the centroid of the viewing circle on earth
-        dphi_c = sensor['dphi_c']
+        dphi_c = sensor['Rotation']*(np.pi)/180
+        print(sensor["Rotation"])
+        print(sensor["Angle Dependent"])
         [centroid, dCentroid, h_unit, v_unit] = self.determineCentroid(satelliteData, sensor)
         
         #Now determine the radius of the circle
         radius = dCentroid*np.tan(dphi_c)
+        
+        print(radius)
 
         return [centroid, radius]        
         
