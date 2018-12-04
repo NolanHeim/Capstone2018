@@ -66,10 +66,8 @@ class Constellation:
    # has already been ran by itself.
     def load_data_matrix(self, filename):
         file_with_extension = filename
-        print(file_with_extension)
         if file_with_extension in os.listdir(self.parsed_datapath):
             matrix = np.load(self.parsed_datapath+file_with_extension, mmap_mode='r')
-            print("we found the orbit file")
         else:
             matrix = 0
             

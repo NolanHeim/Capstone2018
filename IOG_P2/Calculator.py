@@ -79,8 +79,10 @@ class Calculator:
                     print("End index: "+str(end_index))
                 
                 trimmedMatrix = dataMatrix[start_index:end_index]
+
                 if(self.verbose):            
                     print(trimmedMatrix.shape)
+
                 #Determine when satellite is above the horizon relative to position
                 #Centroid of AOI
                 centroidAOI = self.computeCentroid(np.array(AOI))
@@ -121,24 +123,19 @@ class Calculator:
                     AOI_ecef = self.geo_to_ecef(AOI[0], AOI[1], AOI[2])
                     timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI_ecef, delta_t)
     
-    
-                    #PROBLEM STARTS HERE
+                    timingWindowsUTC = []
                     for i in range(0, len(timingWindows)):
-                        empty_window = []
-                        window_utc = self.seconds_2_utc(epoch, empty_window.append(timingWindows[i][0]).append(timingWindows[i][1]))
-                        #window_utc = self.datetime_2_timestamp(self.seconds_2_utc(epoch, np.column_stack([timingWindows[i][0], timingWindows[i][1]])[0]))
-                        
-                        print(window_utc)
-                        for dt in window_utc:
+                        window_UTC = self.seconds_2_utc(epoch, timingWindows[i])
+
+                        interval = []
+                        for dt in window_UTC:
                             dt = self.datetime_2_timestamp(dt)
-                        #timingWindows[i] = [self.seconds_2_utc(epoch, timingWindows[i][0]), self.seconds_2_utc(epoch, timingWindows[i][1])]
-                        timingWindows[i] = window_utc
-                    #PROBLEM ENDS HERE
+                            interval.append(dt)
+                        timingWindowsUTC.append(interval)
                     
-                    timingWindows_Matrix.append(timingWindows)
+                    timingWindows_Matrix.append(timingWindowsUTC)
                     satellites_list.append(str(sat.get_uuid()))
 
-                #might want to redfinie times here
     
                 if(self.plot):
                     stopPlot = 3*1440
@@ -157,7 +154,7 @@ class Calculator:
                     plt.show()
                 
                 
-        print("Found "+str(len(timingWindows_Matrix)+" windows"))
+        print("Found "+str(len(timingWindows_Matrix[0]))+" windows")
         return [timingWindows_Matrix, satellites_list]
 
     def computeCentroid(self, AOI):
@@ -383,8 +380,6 @@ class Calculator:
             #subsetData.append(data[interval[0]:interval[1]])
             subsetData = np.append(subsetData, data[interval[0]:interval[1]], axis=0)
         
-        #subsetData = np.array(subsetData)
-        print(subsetData.shape)
         
         if(self.verbose):        
             print(len(indexWindows))

@@ -40,9 +40,7 @@ class Satellite:
             
     def set_data_matrix(self, dataMatrix):
         self.dataMatrix = dataMatrix
-        print("we have been set")
-        print(np.array(dataMatrix).shape)
-    
+        
     
     def get_data_matrix(self):
         return np.array(self.dataMatrix)
