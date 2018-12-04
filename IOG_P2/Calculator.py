@@ -99,7 +99,7 @@ class Calculator:
                     
                     reducedTimeUTC = self.seconds_2_utc(epoch, reducedTime)
                     
-                    t_start_solar_reduction = tm.time()
+                    #t_start_solar_reduction = tm.time()
                     for t in reducedTimeUTC:
                         solarInclination = self.illumination.computeSolarAngles(lat, lon, t)
                         solarInclinations.append(solarInclination)
@@ -110,18 +110,30 @@ class Calculator:
                     solarInclinations = np.array(solarInclinations)
                     validSolarTimes = (solarInclinations > minSolarAngle) & (solarInclinations < maxSolarAngle)
                     solarReducedMatrix = reducedMatrix[validSolarTimes]
-                    t_end_solar_reduction = tm.time()                
+                    #
+                    #t_end_solar_reduction = tm.time()                
                     
-                    solar_reduction_time = t_end_solar_reduction - t_start_solar_reduction
-                    print("Solar reduction time: "+str(solar_reduction_time))
+                    #solar_reduction_time = t_end_solar_reduction - t_start_solar_reduction
+                    #print("Solar reduction time: "+str(solar_reduction_time))
                     
                     #Determine the intersection across all 'Optical' and/or 'SAR' sensor
                     sensors = sat.get_sensors()
                     AOI_ecef = self.geo_to_ecef(AOI[0], AOI[1], AOI[2])
                     timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI_ecef, delta_t)
     
+    
+                    #PROBLEM STARTS HERE
                     for i in range(0, len(timingWindows)):
-                        timingWindows[i] = [self.seconds_2_utc(timingWindows[i][0]), self.seconds_2_utc(timingWindows[i][1])]
+                        empty_window = []
+                        window_utc = self.seconds_2_utc(epoch, empty_window.append(timingWindows[i][0]).append(timingWindows[i][1]))
+                        #window_utc = self.datetime_2_timestamp(self.seconds_2_utc(epoch, np.column_stack([timingWindows[i][0], timingWindows[i][1]])[0]))
+                        
+                        print(window_utc)
+                        for dt in window_utc:
+                            dt = self.datetime_2_timestamp(dt)
+                        #timingWindows[i] = [self.seconds_2_utc(epoch, timingWindows[i][0]), self.seconds_2_utc(epoch, timingWindows[i][1])]
+                        timingWindows[i] = window_utc
+                    #PROBLEM ENDS HERE
                     
                     timingWindows_Matrix.append(timingWindows)
                     satellites_list.append(str(sat.get_uuid()))
