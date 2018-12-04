@@ -79,6 +79,6 @@ if __name__ == '__main__':
     results_path = "../../Saved Results/"
     parsed_datapath = "../../Parsed Data/"
     MC = Mission_Creator_REST(parsed_datapath, results_path)
-    parser = Parser(datapath, "")
+    #parser = Parser(datapath, "")
     #parser.parse_data(parsed_datapath)    
     api.run()

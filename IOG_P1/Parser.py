@@ -81,7 +81,7 @@ class Parser:
             newFile = os.path.join(parsed_datapath, 'parsed_'+filename[0:-2])
             extraInfoFile = os.path.join(parsed_datapath, 'ex_parsed_'+filename[0:-2])
             
-            extraInfo = [jDate, satelliteID, 0, 0, 0, 0, 0]            
+            extraInfo = [jDate, str(satelliteID), 0, 0, 0, 0, 0]            
             
             data = np.array(dataMatrix)
             np.save(newFile, data)

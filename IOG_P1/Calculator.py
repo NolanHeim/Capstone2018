@@ -12,7 +12,7 @@
 # TODO: Cite all equations from paper & paper itself.
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+import time as tm
 from mpl_toolkits.mplot3d import Axes3D
 import datetime
 
@@ -97,14 +97,16 @@ class Calculator:
                     plt.legend()
                     plt.show()
                 
-                timingWindows_Matrix.append(timingWindows)
-                satellites_list.append(str(extraInfoMatrix[i][self.uuid_index]))
+                if(len(timingWindows) != 0):
+                    timingWindows_Matrix.append(timingWindows)
+                    satellites_list.append(str(extraInfoMatrix[i][self.uuid_index]))
 
+        print("Number of opportunities: "+str(len(timingWindows_Matrix[0])+len(timingWindows_Matrix[1])+len(timingWindows_Matrix[2])))
         return [timingWindows_Matrix, satellites_list]
         
         
     def cubic_hermite_poly(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti):
-        #t2 = time.time()        
+        #t_generate_poly_start = tm.time()       
         
         condition = lambda x: (tiMinus <= x) & (x < ti)
         if(self.verbose):        
@@ -119,11 +121,16 @@ class Calculator:
 
         #print("Time for interpolation + root finding = "+str(time.time() - t2))
 
+        #t_generate_poly_end = tm.time()
+        #print("Time to generate poly: "+str(t_generate_poly_end - t_generate_poly_start))
+
         return [condition, poly, roots]
     
     
     def compute_cubic_roots(self, hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti, domain):
         #Third Order Coefficient
+        #t_compute_roots_start = tm.time()        
+        
         t3 = (1.0/np.power(hi, 3.0))*(-2.0*Vi + 2.0*ViMinus + hi*dVi + hi*dViMinus)
         
         t2 = (1.0/np.power(hi, 3.0))*( (3.0*hi + 6.0*tiMinus)*Vi 
@@ -152,9 +159,12 @@ class Calculator:
         if(self.verbose):        
             print([tiMinus, roots, ti])                
             print(inDomain)
-            time.sleep(0.2)
+            #time.sleep(0.2)
 
         validRoots = roots[inDomain]
+        
+        #t_compute_roots_end = tm.time()
+        #print("Time to compute roots: "+str(t_compute_roots_end - t_compute_roots_start))        
         
         return validRoots
     
@@ -206,6 +216,7 @@ class Calculator:
         
         #Initial Conditions
         times = data[:,0]
+
         dataECEF = data[:,1:7]
 
         posECEF = self.geo_to_ecef(position[0], position[1], position[2])
@@ -249,6 +260,9 @@ class Calculator:
             #Iterate through the max step (Need to add a maximum iteration reached check)
             k = 1    
             kTolMet = False
+    
+            #t_break_up_vf_start = tm.time()            
+            
             while k < self.maxIterations and kTolMet == False:
                 #Compute Visibility Function and Derivatives.
                 ViMinus = VF[indexMinus]
@@ -282,15 +296,14 @@ class Calculator:
             if(ti >= times[-1]):
                 ti = times[-1]
                 endOfTime = True
+
+            #t_break_up_vf_end = tm.time()  
+            #print("Time for self-adaptive segmentation: "+str(t_break_up_vf_end - t_break_up_vf_start))
             
             [condition, poly, roots] = self.cubic_hermite_poly(hi, ViMinus, Vi, dViMinus, dVi, tiMinus, ti)
             conditionSlices.append(condition)            
             polySlices.append(poly)            
             rootSlices.append(roots)
-            
-            if(self.verbose):
-                print('hi: ' + str(hi))
-                time.sleep(2)
             
             hiMinus = hi
             tiMinus = ti
@@ -327,6 +340,10 @@ class Calculator:
         if(self.verbose):        
             print(rootsList)
         timingWindow = []
+
+        if(len(rootsList) == 0):
+            return np.array([])
+        
         startIndex = 0
         
         rootsListUTC = self.seconds_2_utc(epoch, rootsList)
@@ -334,7 +351,7 @@ class Calculator:
         for i in range(0, len(rootsListUTC)):
             rootsListUTC[i] = self.datetime_2_timestamp(rootsListUTC[i]) 
        
-        #print(len(rootsListUTC))        
+        #print(len(rootsListUTC))
         
         if(VF[0] > 0):  #then we are already in visibility range, so t0 to the first root is an interval
             #timingWindow.append([0, rootsList[0]])
@@ -397,7 +414,7 @@ class Calculator:
         return a4
 
         
-    def satellite_visibility(self, dataECI, times, positionECI):  
+    def satellite_visibility(self, dataECI, times, positionECI):                  
         r_sat = dataECI[:,0:3]        
         r_site = positionECI
         
@@ -487,7 +504,7 @@ class Calculator:
         
         
     def calc_epoch(self, jdate):
-        days = jdate - self.RataDieJDtime - 1
+        days = float(jdate) - self.RataDieJDtime - 1
         setup_delta = datetime.timedelta(days=days)
         epoch = datetime.datetime(1,1,1) + setup_delta
         
@@ -508,7 +525,7 @@ class Calculator:
         else:
             end = m_end
             end_jump = (d_end - end).total_seconds()
-            end_index = self.binary_List_Search(times, end_jump)
+            end_index = len(times) - self.binary_List_Search(times, end_jump)
 
         if(self.verbose):
             print(start)

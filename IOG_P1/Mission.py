@@ -38,17 +38,17 @@ class Mission:
         self.startDateTime = datetime.datetime(startYear, startMonth, startDay,
                                                startHour, startMinute, startSec)
         
-        endYear = int(self.intervalStart[0:3])
-        endMonth = int(self.intervalStart[4:5])
-        endDay = int(self.intervalStart[6:7])
-        endHour = int(self.intervalStart[9:10])
-        endMinute = int(self.intervalStart[12:13])
-        endSec = int(self.intervalStart[15:16])
+        endYear = int(self.intervalEnd[0:4])
+        endMonth = int(self.intervalEnd[4:6])
+        endDay = int(self.intervalEnd[6:8])
+        endHour = int(self.intervalEnd[9:11])
+        endMinute = int(self.intervalEnd[12:14])
+        endSec = int(self.intervalEnd[15:17])
         #endMilSec = int(self.intervalStart[18:-1])        
         
-        
+
         self.endDateTime = datetime.datetime(endYear, endMonth, endDay,
-                                             endHour, endMinute, endSec)
+                                             endHour, endMinute, endSec)    
         
         
     def get_name(self):

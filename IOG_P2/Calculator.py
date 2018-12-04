@@ -12,7 +12,7 @@
 # TODO: Cite all equations from paper & paper itself.
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+import time as tm
 from Sensor import *
 from Illumination import *
 from mpl_toolkits.mplot3d import Axes3D
@@ -87,33 +87,45 @@ class Calculator:
                 
                 [poly, reducedMatrix] = self.cubic_hermite_composite(trimmedMatrix, centroidAOI, epoch)
                 
-                #Determine when the satellite is in range of the desired solar angles
-                solarInclinations = []
-                minSolarAngle = mission.get_min_solar_angle()
-                maxSolarAngle = mission.get_max_solar_angle()
-                reducedTime = np.array(reducedMatrix)[:,0]
-                
-                lat = centroidAOI[0]
-                lon = centroidAOI[1]
-                
-                reducedTimeUTC = self.seconds_2_utc(epoch, reducedTime)
-                #t1 = time.time()
-                for t in reducedTimeUTC:
-                    solarInclination = self.illumination.computeSolarAngles(lat, lon, t)
-                    solarInclinations.append(solarInclination)
+                if(len(reducedMatrix) != 0):
+                    #Determine when the satellite is in range of the desired solar angles
+                    solarInclinations = []
+                    minSolarAngle = mission.get_min_solar_angle()
+                    maxSolarAngle = mission.get_max_solar_angle()
+                    reducedTime = np.array(reducedMatrix)[:,0]
                     
-                #t2 = time.time()
-                #print(t2 - t1)
+                    lat = centroidAOI[0]
+                    lon = centroidAOI[1]
+                    
+                    reducedTimeUTC = self.seconds_2_utc(epoch, reducedTime)
+                    
+                    t_start_solar_reduction = tm.time()
+                    for t in reducedTimeUTC:
+                        solarInclination = self.illumination.computeSolarAngles(lat, lon, t)
+                        solarInclinations.append(solarInclination)
+                        
+                    #t2 = time.time()
+                    #print(t2 - t1)
+    
+                    solarInclinations = np.array(solarInclinations)
+                    validSolarTimes = (solarInclinations > minSolarAngle) & (solarInclinations < maxSolarAngle)
+                    solarReducedMatrix = reducedMatrix[validSolarTimes]
+                    t_end_solar_reduction = tm.time()                
+                    
+                    solar_reduction_time = t_end_solar_reduction - t_start_solar_reduction
+                    print("Solar reduction time: "+str(solar_reduction_time))
+                    
+                    #Determine the intersection across all 'Optical' and/or 'SAR' sensor
+                    sensors = sat.get_sensors()
+                    AOI_ecef = self.geo_to_ecef(AOI[0], AOI[1], AOI[2])
+                    timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI_ecef, delta_t)
+    
+                    for i in range(0, len(timingWindows)):
+                        timingWindows[i] = [self.seconds_2_utc(timingWindows[i][0]), self.seconds_2_utc(timingWindows[i][1])]
+                    
+                    timingWindows_Matrix.append(timingWindows)
+                    satellites_list.append(str(sat.get_uuid()))
 
-                solarInclinations = np.array(solarInclinations)
-                validSolarTimes = (solarInclinations > minSolarAngle) & (solarInclinations < maxSolarAngle)
-                solarReducedMatrix = reducedMatrix[validSolarTimes]
-                
-                #Determine the intersection across all 'Optical' and/or 'SAR' sensor
-                sensors = sat.get_sensors()
-                AOI_ecef = self.geo_to_ecef(AOI[0], AOI[1], AOI[2])
-                timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI_ecef, delta_t)
-                
                 #might want to redfinie times here
     
                 if(self.plot):
@@ -132,9 +144,8 @@ class Calculator:
                     plt.legend()
                     plt.show()
                 
-                timingWindows_Matrix.append(timingWindows)
-                satellites_list.append(str(sat.get_uuid()))
-                print(timingWindows_Matrix)
+                
+        print("Found "+str(len(timingWindows_Matrix)+" windows"))
         return [timingWindows_Matrix, satellites_list]
 
     def computeCentroid(self, AOI):
@@ -286,6 +297,8 @@ class Calculator:
         rootSlices = []
         endOfTime= False        
         #Loop through the potential values
+
+        #t_self_adaptive_start = tm.time()        
         
         while endOfTime == False:
             #Iterate through the max step (Need to add a maximum iteration reached check)
@@ -329,6 +342,9 @@ class Calculator:
             conditionSlices.append(condition)            
             polySlices.append(poly)            
             rootSlices.append(roots)
+            
+            #t_self_adaptive_end = tm.time()
+            #print("Self adaptive hermite interpolation took: "+str(t_self_adaptive_end - t_self_adaptive_start))            
             
             if(self.verbose):
                 print('hi: ' + str(hi))
@@ -381,6 +397,9 @@ class Calculator:
         timingWindow = []
         startIndex = 0
         
+        if(len(rootsList) == 0):
+            return np.array([])
+
         #rootsListUTC = self.seconds_2_utc(epoch, rootsList)
         
         
@@ -566,7 +585,7 @@ class Calculator:
         else:
             end = m_end
             end_jump = (d_end - end).total_seconds()
-            end_index = self.binary_List_Search(times, end_jump)
+            end_index = len(times) - self.binary_List_Search(times, end_jump)
 
         if(self.verbose):
             print(start)

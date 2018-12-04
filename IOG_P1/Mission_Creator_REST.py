@@ -14,6 +14,7 @@ from Parser import *
 from Calculator import *
 import numpy as np
 import json
+import uuid
 
 import time
 
@@ -65,9 +66,9 @@ class Mission_Creator_REST:
         #print(json.dumps(input_json))
         #print("making dictionary")
         input_dict = input_json
-        print(input_dict)
+        #print(input_dict)
         targetCoordinates = input_dict.get("Target", "")
-        print(targetCoordinates)
+        #print(targetCoordinates)
         name = str(uuid)
         startTime = input_dict.get("POI", "").get("startTime", "")
         endTime = input_dict.get("POI", "").get("endTime", "")
@@ -77,7 +78,7 @@ class Mission_Creator_REST:
         else:
             idsToConsider = []
             
-        mission = Mission(targetCoordinates, name, "", "", 0, startTime, endTime, idsToConsider)
+        mission = Mission(targetCoordinates, name, startTime, endTime, idsToConsider)
         return mission        
 
 
@@ -105,4 +106,13 @@ class Mission_Creator_REST:
                 ei_Matrices.append(matrix)
             
         return np.array(ei_Matrices)    
+
+if __name__ == '__main__':
+    with open("test_mission.json", "r") as missionjson:
+        missiondict = json.load(missionjson)
     
+    #missioninput = json.dumps(missiondict)
+    newid = uuid.uuid4()
+    
+    MC = Mission_Creator_REST("../../Parsed Data/", "../../Saved Results")
+    MC.generate_imaging_opportunities(missiondict, newid) 
