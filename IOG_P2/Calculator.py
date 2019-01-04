@@ -153,7 +153,7 @@ class Calculator:
                     plt.show()
                 
                 
-        print("Found "+str(len(timingWindows_Matrix[0]))+" windows")
+        print("Found "+str(len(timingWindows_Matrix[0])+len(timingWindows_Matrix[1]))+" windows")
         return [timingWindows_Matrix, satellites_list]
 
     def computeCentroid(self, AOI):
@@ -417,13 +417,14 @@ class Calculator:
         if(VF[0] > 0):  #then we are already in visibility range, so t0 to the first root is an interval
             timingWindow.append([0, rootsList[0]])
             #timingWindow.append([epoch, rootsListUTC[0]])
-            startIndex = 1
+            rootsList = np.insert(rootsList, 0, 0)
+            startIndex = 2
         elif(VF[0] < 0):  #then we are not in visibility range, so the first root will be the start of an interval
             timingWindow.append([rootsList[0], rootsList[1]])
             #timingWindow.append([rootsListUTC[0], rootsListUTC[1]])
             startIndex = 2
         else:            
-            #It is zero at t = 0, check if star/end of window
+            #It is zero at t = 0, check if start/end of window
             if(rootsList[0] == 0.0):
                 indexHalf = self.binary_List_Search(times, rootsList[1]/2.0)
                 endrootIndex = 1
@@ -443,19 +444,22 @@ class Calculator:
         if (len(rootsList) % 2 == 1):
             endIndex = len(rootsList)-1
         else:
-            endIndex = len(rootsList)+1
+            endIndex = len(rootsList)
         #endIndex = len(rootsListUTC) - 1
        
-        for index in range(startIndex, endIndex, 2):
+        index = startIndex
+        while index < endIndex:
+        #for index in range(startIndex, endIndex, 2):
             #timingWindow.append([rootsListUTC[index], rootsListUTC[index+1]])
             timingWindow.append([rootsList[index], rootsList[index+1]])
+            index = index + 2
         
         #Check to see if the roots form a closed set.
         
         if(range(startIndex, endIndex)[-1] == (endIndex-2)):          
             if(rootsList[-1] != times[-1]):
                 #timingWindow.append([rootsListUTC[-1], self.datetime_2_timestamp(self.one_time_to_utc(epoch, times[-1]))])
-                timingWindow.append([rootsListUTC[-1], times[-1]])
+                timingWindow.append([rootsList[-1], times[-1]])
     
         #Now I need to convert all of the timingWindow times into their Index in time.
         indexWindow = []

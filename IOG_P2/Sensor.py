@@ -45,6 +45,9 @@ class Sensor:
 
         boundCondition = np.diff(listOfTimeWindows) > delta_t
         rightBounds = (np.argwhere(boundCondition).T)[0]
+        if(len(rightBounds) == 0): #no right bounds
+            return np.array([])
+        
         if(rightBounds[-1] != len(listOfTimeWindows)-1):
             rightBounds = np.append(rightBounds, len(listOfTimeWindows)-1)
         if(rightBounds[0] == 0):
