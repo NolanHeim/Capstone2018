@@ -18,7 +18,6 @@ from Illumination import *
 from mpl_toolkits.mplot3d import Axes3D
 import datetime
 
-
 class Calculator:
     
     def __init__(self):
@@ -44,9 +43,11 @@ class Calculator:
     #solar angles. Finally determines the AOI intersection with the viewing area across each sensor.
     def generate_imaging_opportunities(self, mission, constellation):
         #self.t0 = time.time()
-        missionCoordinates = mission.get_coordinates()
+        missionCoordinates = mission.get_coordinates_3D()
         AOI = np.array(missionCoordinates)
 
+        AOI_Lat_Long = np.array(mission.get_coordinates_2D())
+        print(AOI_Lat_Long)
         mission_interval_start = mission.get_interval_start_time()
         mission_interval_end = mission.get_interval_end_time()
 
@@ -120,7 +121,7 @@ class Calculator:
                     
                     #Determine the intersection across all 'Optical' and/or 'SAR' sensor
                     sensors = sat.get_sensors()
-                    timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI, delta_t)
+                    timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI_Lat_Long, delta_t)
     
                     timingWindowsUTC = []
                     for i in range(0, len(timingWindows)):
@@ -153,7 +154,7 @@ class Calculator:
                     plt.show()
                 
                 
-        print("Found "+str(len(timingWindows_Matrix[0])+len(timingWindows_Matrix[1]))+" windows")
+        #print("Found "+str(len(timingWindows_Matrix[0])+len(timingWindows_Matrix[1]))+" windows")
         return [timingWindows_Matrix, satellites_list]
 
     def computeCentroid(self, AOI):

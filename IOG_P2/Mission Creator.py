@@ -59,7 +59,7 @@ class MissionCreator:
     # At the moment, the Constellation is unused.
     def system_setup(self, datapath, misionpath):
         self.parser = Parser(self.datapath, self.missionpath)
-        self.constellation = Constellation()
+        self.constellation = Constellation(self.parsed_datapath)
         self.calculator = Calculator()
     
 
@@ -99,5 +99,5 @@ class MissionCreator:
 
 #The two parameters are the filepaths for the satellite data and the mission info data, respectively
 if __name__ == "__main__":
-    missionCreator = MissionCreator("../../Data/", "../../Missions/Beta Test/", "../../Parsed Data/")
+    missionCreator = MissionCreator("../../Data/", "../../Missions/", "../../Parsed Data/")
 

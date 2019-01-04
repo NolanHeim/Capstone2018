@@ -76,21 +76,25 @@ class Sensor:
         #Determine if sensor has independent or dependent range of motion angles
         if(viewingType == "False"):
             #A rectangular viewing area
-            
-            Npoly = [tuple(i) for i in Npoly]
-            AOI = Polygon(Npoly)
+            Npoly = [Point(i) for i in Npoly]        
+            AOI = Polygon(*Npoly)
             [rectangleECEF, rArea] = self.viewing_rectangle(satelliteData, sensor)
             timeIndex = 0
-            timeWindowIndex = []            
-            for timePoint in rectangleECEF:
-                viewingRectangle = self.ecef_to_geo(timePoint)
+            timeWindowIndex = []           
+            for t in time:
+                print(t)
+                viewingRectangle = np.array([
+                self.ecef_to_geo_on_surface(rectangleECEF[0][timeIndex]),
+                self.ecef_to_geo_on_surface(rectangleECEF[1][timeIndex]),
+                self.ecef_to_geo_on_surface(rectangleECEF[2][timeIndex]),
+                self.ecef_to_geo_on_surface(rectangleECEF[3][timeIndex])])
                 
-                tupleViewingArea = []
+                pointViewingArea = []
                 for point in viewingRectangle:
-                    tupleViewingArea.append(tuple(point[0],point[1]))
+                    pointViewingArea.append(Point(point[0][0],point[0][1]))
             
                 
-                VA = Polygon(rectangleFormatted)                         
+                VA = Polygon(*pointViewingArea)                         
                 if(intersection(VA,AOI) != []):
                     #Intersection between AOI and Viewing Area
                     timeWindowIndex.append(timeIndex)
@@ -99,8 +103,10 @@ class Sensor:
             timeWindows = time[timeWindowIndex]
             #Take the intersection between the total time and the subset
             #Results in a boolean array
-            booleanTimes = np.in1d(times,timeWindows)
+            booleanTimes = np.in1d(time,timeWindows)
         else:
+            booleanTimes = False                
+            Npoly = self.geo_to_ecef(Npoly[0],Npoly[1],0.0*Npoly[0])
             #A circular viewing area (dependent range of motion angle case)
             [centroid, radius] = self.viewing_circle(satelliteData, sensor)
             for pointn in Npoly:
@@ -134,7 +140,28 @@ class Sensor:
         Z = (( np.power(b,2.0)/np.power(a,2.0) )*N + alt)*np.sin(phi)
         
         return np.column_stack([X,Y,Z])
+    
+    def ecef_to_geo_on_surface(self, position):
+        a = self.equitorialRadius
+        b = self.polarRadius
+
+        x = position[0]
+        y = position[1]
+        z = position[2]        
         
+        lam = np.arctan2(y,x)
+
+        e = np.sqrt(np.power(a,2.0)-np.power(b,2.0))/a
+        p = np.sqrt(np.power(x,2.0)+np.power(y,2.0))
+        alt = 0.0
+        phi = math.atan2(z,p*(1.0-np.power(e,2.0)))
+
+        lon = np.degrees(lam)
+        lat = np.degrees(phi)
+
+        geo = np.column_stack([lat, lon, alt])
+        
+        return geo
      
     #based off the second response here https://gis.stackexchange.com/questions/265909/converting-from-ecef-to-geodetic-coordinates
     def ecef_to_geo(self, position):
@@ -157,7 +184,7 @@ class Sensor:
         sin_phi = np.sin(phi)
         N = np.power(a,2.0)/np.sqrt(np.power(a*cos_phi,2.0)+np.power(b*sin_phi,2.0))
         alt = p/cos_phi - N
-        while abs(alt-alt_0) > 1.0e-6:
+        while abs(alt-alt_0) > 1.0e-3:
             alt_0 = alt
             phi = np.arctan2(z,p*(1.0-np.power(e,2.0)*N/(N+alt)))
             cos_phi = np.cos(phi)

@@ -10,6 +10,7 @@
 #
 import numpy as np
 import datetime
+import copy
 
 class Mission:
     
@@ -57,12 +58,14 @@ class Mission:
         return self.name
     
     
-    def get_coordinates(self):
-        #No longer need altitude (only working in geo)        
-        #for coordinate in self.targetCoordinates:
-        #    coordinate.append(0.0) #Accounting for altitude
+    def get_coordinates_3D(self):   
+        coordinates = copy.deepcopy(self.targetCoordinates)
+        for coordinate in coordinates:
+            coordinate.append(0.0) #Accounting for altitude
+        return coordinates
+    
+    def get_coordinates_2D(self):
         return self.targetCoordinates
-        
     
     def get_sensor_type(self):
         return self.sensorType
