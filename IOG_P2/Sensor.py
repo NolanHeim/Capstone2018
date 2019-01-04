@@ -14,6 +14,7 @@ import math
 from Calculator import *
 import matplotlib.pyplot as plt
 import time as tm
+from sympy.geometry import *
 
 class Sensor:
     #Should this be controlled by the satellite class?
@@ -62,39 +63,42 @@ class Sensor:
         
         return timeWindows
 
-    #Assumed Npoly of the form: [point1, point2, point3, point4] in ecef
+    #Assumed Npoly of the form: [point1, point2, point3, point4] in [lat,long]
     #Determines the intersection between the satellite and
     #the N-D polygon
-    def single_sensor_intersection(self, satelliteData, sensor, Npoly, delta_t):
-
-        
-        epsilon = 1.1 #CURVATURE PARAMETER
-        #A smaller epsilon will result in a more conservative estimate. If epsilon is zero,
-        #The only solution is the centroid of the viewing area. (a point)
+    def single_sensor_intersection(self, satelliteData, sensor, Npoly, delta_t):                
         viewingType = sensor['Angle Dependent']        
-        #time = satelliteData[:,0]
-        #A list of intersections times for every point on AOI
-        booleanTimes = False
+        time = satelliteData[:,0]
+        
+        #Determine if sensor has independent or dependent range of motion angles
         if(viewingType == "False"):
             #A rectangular viewing area
-            [rectangle, rArea] = self.viewing_rectangle(satelliteData, sensor)        
-            for rn in Npoly:
-                v0 = rectangle[0] - rn
-                v1 = rectangle[1] - rn
-                v2 = rectangle[2] - rn
-                v3 = rectangle[3] - rn
-        
-                area01 = self.computeTriangleArea(v0, v1)
-                area12 = self.computeTriangleArea(v1, v2)
-                area23 = self.computeTriangleArea(v2, v3)
-                area30 = self.computeTriangleArea(v3, v0)
+            
+            Npoly = [tuple(i) for i in Npoly]
+            AOI = Polygon(Npoly)
+            [rectangleECEF, rArea] = self.viewing_rectangle(satelliteData, sensor)
+            timeIndex = 0
+            timeWindowIndex = []            
+            for timePoint in rectangleECEF:
+                viewingRectangle = self.ecef_to_geo(timePoint)
                 
-                areaFunction = (area01 + area12 + area23 + area30) - (rArea*epsilon)               
-
-                booleanTimes = booleanTimes | (areaFunction < 0)                
-
+                tupleViewingArea = []
+                for point in viewingRectangle:
+                    tupleViewingArea.append(tuple(point[0],point[1]))
+            
+                
+                VA = Polygon(rectangleFormatted)                         
+                if(intersection(VA,AOI) != []):
+                    #Intersection between AOI and Viewing Area
+                    timeWindowIndex.append(timeIndex)
+                timeIndex = timeIndex + 1
+                
+            timeWindows = time[timeWindowIndex]
+            #Take the intersection between the total time and the subset
+            #Results in a boolean array
+            booleanTimes = np.in1d(times,timeWindows)
         else:
-            #A circular viewing area
+            #A circular viewing area (dependent range of motion angle case)
             [centroid, radius] = self.viewing_circle(satelliteData, sensor)
             for pointn in Npoly:
                 d_rn = centroid - pointn

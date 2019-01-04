@@ -120,8 +120,7 @@ class Calculator:
                     
                     #Determine the intersection across all 'Optical' and/or 'SAR' sensor
                     sensors = sat.get_sensors()
-                    AOI_ecef = self.geo_to_ecef(AOI[0], AOI[1], AOI[2])
-                    timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI_ecef, delta_t)
+                    timingWindows = self.sensor.sensors_intersection(solarReducedMatrix, sensors, mission, AOI, delta_t)
     
                     timingWindowsUTC = []
                     for i in range(0, len(timingWindows)):

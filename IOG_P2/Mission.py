@@ -58,8 +58,9 @@ class Mission:
     
     
     def get_coordinates(self):
-        for coordinate in self.targetCoordinates:
-            coordinate.append(0.0) #Accounting for altitude
+        #No longer need altitude (only working in geo)        
+        #for coordinate in self.targetCoordinates:
+        #    coordinate.append(0.0) #Accounting for altitude
         return self.targetCoordinates
         
     
