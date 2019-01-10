@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 #
-# App.py
+# Api.py
+#
+# (PHASE 1)
+#
+# This file contains all the code needed for the REST API that wraps the project.
+# It instantiates the Mission Creator (top level file for the program) and can be
+# communicated with via the command line. See the final report Appendix for full
+# running instructions.
 #
 # Initial Creation Date: 11/03/2018
 #
@@ -16,12 +23,13 @@ from Mission_Creator_REST import *
 api = Flask(__name__)
 
 
+#Base
 @api.route('/')
 def api_root():
     return "Welcome to the Imaging Opportunity Generator"
 
 
-#post
+#Post
 @api.route('/visibility/search', methods = ['POST'])
 def api_search():
         
@@ -47,38 +55,42 @@ def api_search():
     
     response = json.dumps(output_json)
     
+    #creates the Response object
     resp = Response(response, status=status, mimetype='application/json')
 
     return resp
 
 
-#get
+#Get
 @api.route('/visibility/<articleid>', methods = ['GET'])
 def api_get_results(articleid):
 
-    #no such results id exists
+    #no such results id exists, return code 400
     if not (os.path.isfile(results_path+str(articleid)+".json")):
         response = "ERROR - No results for specified ID"
+        #Create the response object
         resp = Response(response, status=400)
         return resp
     
-    else:
+    else: #Results for the given ID do exist
         with open(results_path+str(articleid)+".json", "r") as read_file:
             response = read_file.readlines()
 
+        #Creates the Response object
         resp = Response(response, status=200, mimetype='application/json')
         return resp
     
     response = "ERROR - Backend error"
+    
+    #Creates the Response object
     resp = Response(response, status=500)
     return resp
 
 
+# Runs the API. Need a separate command window to communicate with it.
 if __name__ == '__main__':
     datapath = "../../Data/"
     results_path = "../../Saved Results/"
     parsed_datapath = "../../Parsed Data/"
     MC = Mission_Creator_REST(parsed_datapath, results_path)
-    #parser = Parser(datapath, "")
-    #parser.parse_data(parsed_datapath)    
     api.run()

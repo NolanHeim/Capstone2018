@@ -2,6 +2,8 @@
 #
 # Constellation.py
 #
+# (PHASE 2)
+#
 # Represents the group of all satellites for which data is provided.
 #
 # Initial Creation Date: 09/26/2018
@@ -13,6 +15,7 @@ import numpy as np
 import os
 import json
 
+
 class Constellation:    
     def __init__(self, parsed_datapath):
         self.constellation = {};
@@ -21,9 +24,10 @@ class Constellation:
         self.construct_satellites()
         
     
+    # Loads saved satellite data into each satellite object. uuids is the list of
+    # uuids to consider, specified by the Mission.
     def add_satellite_data(self, uuids):
-        #then load data for all available satellites
-        if(uuids == []): 
+        if(uuids == []): #then load data for ALL available satellites
             for uuid in self.constellation:
                 satellite = self.constellation[uuid]
                 dataMatrix = self.load_data_matrix(satellite.get_parsed_orbit_name())
@@ -31,8 +35,7 @@ class Constellation:
                 satellite.set_data_matrix(dataMatrix)
                 satellite.set_sensors(sensorModel)
 
-        #only load data for specified satellites
-        else: 
+        else: #only load data for specified satellites 
             for uuid in uuids:
                 if uuid in self.constellation:
                     satellite = self.constellation[uuid]
@@ -43,18 +46,21 @@ class Constellation:
                 else:
                     return 'ERROR: UUID is not valid'
 
-            
+
+    # Returns the Satellite object corresponding to the given UUID
     def get_satellite(self, UUID):
         return self.constellation[UUID]
+
         
-        
+    # Gets a list containing all the Satellite instantiations in this Constellation
     def get_satellite_list(self):
         satList = [];
         for uuid in self.constellation:
             satList.append(self.constellation[uuid])
         return satList
 
-    
+
+    # Instantiates Satellite objects for each extraInfo file
     def construct_satellites(self):
         for ei in self.extraInfoMatrix:
             row = [ei["jDate"], ei["satelliteID"], ei["satelliteName"], ei["parsed_dataFile"]]
@@ -73,19 +79,21 @@ class Constellation:
             
         return np.array(matrix)
 
-        
+
+    # Loads sensors fo a given satellite
     def load_sensor_model(self, satName):
         filename = 'sensor_parsed_' + satName + '.json'
         with open(self.parsed_datapath + filename, "r") as sensor_json:
                 sensorModel = json.load(sensor_json)       
         return sensorModel
 
-        
+
+    # Obtains all the extraInfo all at once and concatenates it all into a list of dictionaries
     def load_extra_info(self):
         ei_Matrices = []
 
         for filename in os.listdir(self.parsed_datapath):
-            if(filename[0] == 'e'):            
+            if(filename[0] == 'e'): #begins with e => must be extra info (see spec.)           
                 with open(self.parsed_datapath + filename, "r") as extra_info_json:
                     extraInfoDict = json.load(extra_info_json)       
         

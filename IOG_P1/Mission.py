@@ -2,17 +2,19 @@
 #
 # Mission.py
 #
+# (PHASE 1)
+#
 # Represents a mission, contains all needed parameters for calculator. 
 #
 # Initial Creation Date: 09/28/2018
 #
 # Written by Jordan Jones and Nolan Heim
 #
-import numpy as np
 import datetime
 
 class Mission:
     
+    #set fields based on parameters
     def __init__(self, targetCoordinates, name, 
                  intervalStart, intervalEnd, idsToConsider):
         self.targetCoordinates = targetCoordinates
@@ -22,10 +24,13 @@ class Mission:
         self.idsToConsider = idsToConsider
 
         #Parse the start and end times here.
-        #Save as datetimes.
+        #Save as datetime objects.
         self.parse_date_time()
         
 
+    #Handles parsing the intervalStart/intervalEnd strings as specified in the 
+    #REST API spec. Numbers are hard coded based on that string, as we assume
+    #the format willl not change.
     def parse_date_time(self):
         startYear = int(self.intervalStart[0:4])
         startMonth = int(self.intervalStart[4:6])
@@ -33,7 +38,6 @@ class Mission:
         startHour = int(self.intervalStart[9:11])
         startMinute = int(self.intervalStart[12:14])
         startSec = int(self.intervalStart[15:17])
-        #startMilSec = int(self.intervalStart[18:-1])        
         
         self.startDateTime = datetime.datetime(startYear, startMonth, startDay,
                                                startHour, startMinute, startSec)
@@ -44,7 +48,6 @@ class Mission:
         endHour = int(self.intervalEnd[9:11])
         endMinute = int(self.intervalEnd[12:14])
         endSec = int(self.intervalEnd[15:17])
-        #endMilSec = int(self.intervalStart[18:-1])        
         
 
         self.endDateTime = datetime.datetime(endYear, endMonth, endDay,
@@ -72,6 +75,7 @@ class Mission:
         return self.idsToConsider
         
         
+    #Debugging function only    
     def display_parameters(self):
         print(self.get_coordinates())
         print(self.get_interval_start_time())
@@ -79,6 +83,7 @@ class Mission:
         print(self.get_ids_to_consider())
         
         
+    #Used to ensure all required parameters have values    
     def check_params(self):
         if (self.targetCoordinates == [] or self.name == "" or self.intervalEnd == ""
         or self.intervalStart == ""):
