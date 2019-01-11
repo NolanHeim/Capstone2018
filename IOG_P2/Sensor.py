@@ -3,6 +3,9 @@
 # Sensor.py
 #
 # Sensor Calculations
+#   Includes the algorithms to determine the sensor viewing projection on
+#   the surface of the Earth. Also includes the methods to determine the
+#   intersection between two polygons (i.e. the AOI and viewing area)
 #
 # Initial Creation Date: 11/17/2018
 #
@@ -12,23 +15,22 @@
 import numpy as np
 import math
 from Calculator import *
-import matplotlib.pyplot as plt
 import time as tm
 from sympy.geometry import *
 
-class Sensor:
-    #Should this be controlled by the satellite class?
-    #I.e. each sensor onboard the satellite initializes its own sensor class?
-    
+class Sensor:    
     def __init__(self):
         self.equitorialRadius = 6378137.0 #m
         self.polarRadius = 6356752.3 #m
         self.EARTH_RADIUS = 6371000.0 #m
 
+    #Determines the intersection between the Area of interest (AOI) and 
+    # satellite viewing area
     def sensors_intersection(self, satelliteData, sensors, mission, Npoly, delta_t):
         sensorType = mission.get_sensor_type()
         time = np.array(satelliteData[:,0])
         booleanTimes = False
+        #Determine the sensor type
         if(sensorType == ''):
             #Cycle through all sensors
             for sensor in sensors:
@@ -56,7 +58,7 @@ class Sensor:
         leftBounds = np.array(rightBounds[:-1]) + 1
         leftBounds = np.insert(leftBounds, 0, 0)
             
-        #Using the left & right bounds for each point, I can construct the timing windows. 
+        #Using the left & right bounds for each point, construct the timing windows. 
         timeWindows = []
         for bound in range(0, len(rightBounds)):
             timeWindows.append([listOfTimeWindows[leftBounds[bound]], 
@@ -69,6 +71,7 @@ class Sensor:
     #Assumed Npoly of the form: [point1, point2, point3, point4] in [lat,long]
     #Determines the intersection between the satellite and
     #the N-D polygon
+    #Note: Due to the sympy intersection library this method is not optimized.
     def single_sensor_intersection(self, satelliteData, sensor, Npoly, delta_t):                
         viewingType = sensor['Angle Dependent']        
         time = satelliteData[:,0]
@@ -82,7 +85,6 @@ class Sensor:
             timeIndex = 0
             timeWindowIndex = []           
             for t in time:
-                print(t)
                 viewingRectangle = np.array([
                 self.ecef_to_geo_on_surface(rectangleECEF[0][timeIndex]),
                 self.ecef_to_geo_on_surface(rectangleECEF[1][timeIndex]),
@@ -117,15 +119,6 @@ class Sensor:
         
         return booleanTimes
 
-
-            
-    def computeTriangleArea(self, vec1, vec2):
-        crossProduct = np.cross(vec1, vec2)
-        magnitude = np.sqrt(np.sum(crossProduct*crossProduct, axis=1))
-        triangleArea = (0.5)*magnitude
-        return triangleArea
-        
-                 
     def geo_to_ecef(self, lat, lon, alt):
         a = self.equitorialRadius
         b = self.polarRadius
@@ -140,7 +133,9 @@ class Sensor:
         Z = (( np.power(b,2.0)/np.power(a,2.0) )*N + alt)*np.sin(phi)
         
         return np.column_stack([X,Y,Z])
-    
+
+    #Determines the conversion from ECEF to geo assuming an
+    #altitude of 0 (on Earth's surface)
     def ecef_to_geo_on_surface(self, position):
         a = self.equitorialRadius
         b = self.polarRadius
@@ -206,9 +201,6 @@ class Sensor:
     
     #Returns the for corners of the viewing rectangle in ECEF
     def viewing_rectangle(self, satelliteData, sensor):
-        #These will need different definitions
-        #In RADIANS OR DEGREES?
-        #Im taking them as in Radians
         dphi_h = sensor["Rotation"][0]*(np.pi)/180
         dphi_v = sensor["Rotation"][1]*(np.pi)/180        
         
@@ -224,7 +216,7 @@ class Sensor:
         point3 = centroid + h_unit*deltah + v_unit*deltav
         point4 = centroid + h_unit*deltah - v_unit*deltav
         
-        ##
+        ## Rect. Corner Points orientation
         # |2 3|
         # |1 4|
         ##
@@ -232,11 +224,11 @@ class Sensor:
         rArea = (2*deltah)*(2*deltav)        
         
         return [rectangle, rArea]
-        
+    
+    #Determines the centroid point
+    #This represents the point on Earth's surface where the central viewing
+    #axis of the satellite intersects.
     def determineCentroid(self, satelliteData, sensor):     
-        #These will need different definitions
-        #In RADIANS OR DEGREES?
-        #Im taking them as in Radians
         phi_h = sensor["Orientation"][0]*(np.pi)/180
         phi_v = sensor["Orientation"][1]*(np.pi)/180
         
@@ -286,6 +278,7 @@ class Sensor:
         
         return [cent_ecef, dCent, h_unit, v_unit]
     
+    #Computes the rotation for the centroid calculation
     def computeRotation(self, phi_v, phi_h, h_unit, v_unit, vec):
             
         vRot = self.arbitraryRotationMatrix(phi_v, h_unit)
@@ -341,13 +334,9 @@ class Sensor:
                 
         return rotationMatrix
         
-                
     def get_psi(self, phi, altitude):
         theta = np.asin((altitude + self.r_earth)*(np.sin(phi)/self.r_earth))
         return (np.pi - theta - phi)
-        
-
-        
         
     def viewing_circle(self, satelliteData, sensor):
         #Get the centroid of the viewing circle on earth

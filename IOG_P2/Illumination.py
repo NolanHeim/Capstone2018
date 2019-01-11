@@ -2,7 +2,9 @@
 #
 # Illumination.py
 #
-# Represents the data for a single satellite
+# Represents the illumination data for a single satellite
+# Determines the solar inclination angle for a given location on Earth's
+# surface and a time.
 #
 # Initial Creation Date: 10/27/2018
 #
@@ -10,8 +12,7 @@
 #
 import numpy as np
 
-class Illumination:
-    #TODO insert class functions and parameters    
+class Illumination:  
     def __init__(self):
         self.start = True
     
@@ -42,9 +43,9 @@ class Illumination:
         time_offset = eqtime + 4.0*Lon
         tst = time.hour*60.0 + time.minute + time.second/60.0 + time_offset
         ha = (tst/4.0) - 180.0
-        #print(ha)
+        
         radLat = np.radians(Lat)
-        #print(radLat)
+        
         solarZenith = np.arccos(np.sin(radLat)*np.sin(decl) +
                         np.cos(radLat)*np.cos(decl)*np.cos(np.radians(ha)))
         solarElevation = (np.pi/2.0) - solarZenith
@@ -52,6 +53,7 @@ class Illumination:
            solarAzimuth = 2.0*np.pi - np.arccos((-1.0)*(np.sin(radLat)*np.cos(solarZenith) - np.sin(decl))/
                             (np.cos(radLat)*np.sin(solarZenith)))
         else:
+            #Not required for this version
             solarAzimuth = np.arccos((-1.0)*(np.sin(radLat)*np.cos(solarZenith) - np.sin(decl))/
                             (np.cos(radLat)*np.sin(solarZenith)))
         
@@ -61,10 +63,9 @@ class Illumination:
         return solarInclination     
         
     #Takes solarElevation as a numpy array as input.
+    #NOTE: Not required for this version.
     def computeSolarIrradiation(self, solarElevation):
         solarZenith = (np.pi/2.0) - solarElevation
-        
-        #
         irradiation = 910*np.cos(solarZenith) - 30;
         
         negativeFlag = irradiation < 0.0
